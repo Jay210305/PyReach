@@ -25,7 +25,7 @@ users (roadmap S4-T8).
 
 Create `documentation/user-manual.md` (or `docs/user-manual.md`) containing:
 
-1. **Installation**: Poetry and `pip install .` paths; Python 3.10+ requirement.
+1. **Installation**: uv and `pip install .` paths; Python 3.10+ requirement.
 2. **First scan**: `pyreach sync-osv`, then `pyreach /path/to/project`.
 3. **Command reference**: every option from `03-...md` §4 in a table, with defaults.
 4. **Exit codes**: 0/1/2 and their CI meaning.

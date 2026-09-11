@@ -96,7 +96,7 @@ Use an in-memory or `tmp_path` SQLite file.
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/db/test_schema.py -q
+uv run pytest tests/unit/db/test_schema.py -q
 python -c "from pyreach.db.connection import initialize_database; initialize_database('C:/tmp/test.db')"
 sqlite3 C:/tmp/test.db ".schema"
 ```

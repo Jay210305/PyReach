@@ -124,9 +124,9 @@ the MR thread. Record the review hint in the commit message (e.g. `S1-T1 reviewe
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/parsers/test_manifest_contract.py -q
-poetry run ruff check pyreach/parsers/manifest.py pyreach/exceptions.py
-poetry run mypy pyreach/parsers/manifest.py
+uv run pytest tests/unit/parsers/test_manifest_contract.py -q
+uv run ruff check pyreach/parsers/manifest.py pyreach/exceptions.py
+uv run mypy pyreach/parsers/manifest.py
 ```
 
 ## Edge Cases & Pitfalls
@@ -147,6 +147,6 @@ poetry run mypy pyreach/parsers/manifest.py
 ## Definition of Done
 
 - [ ] `Dependency` and `ManifestParser` merged to `main`.
-- [ ] Contract tests green in CI (may be added in S1-T7).
+- [x] Contract tests green in CI (may be added in S1-T7).
 - [ ] Alonso's review recorded.
-- [ ] Docstrings explain the version-normalization and no-execution rules.
+- [x] Docstrings explain the version-normalization and no-execution rules.

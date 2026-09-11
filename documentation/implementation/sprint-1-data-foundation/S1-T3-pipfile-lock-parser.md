@@ -101,8 +101,8 @@ class PipfileLockParser:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/parsers/test_manifest_pipfile.py -q
-poetry run pytest tests/unit/parsers --cov=pyreach.parsers --cov-report=term-missing
+uv run pytest tests/unit/parsers/test_manifest_pipfile.py -q
+uv run pytest tests/unit/parsers --cov=pyreach.parsers --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

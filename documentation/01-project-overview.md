@@ -83,7 +83,7 @@ PyReach solves this through **static reachability analysis**:
 
 - **ISO/IEC 27001:2022 Control A.8.12**: Management of technical vulnerabilities. PyReach supports this by providing local, auditable vulnerability assessment.
 - **Data Sovereignty**: Fully on-premise execution; zero external data transmission during analysis.
-- **Open Source Stack**: Python 3.10+, Poetry, SQLite, NetworkX, pytest — no proprietary runtime licenses required.
+- **Open Source Stack**: Python 3.10+, uv, SQLite, NetworkX, pytest — no proprietary runtime licenses required.
 
 ## References
 

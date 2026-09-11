@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# uv
+# (uv.lock is intentionally committed)
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+coverage.json
+
+# Type checking / lint caches
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+
+# PyReach runtime data
+.pyreach/
+*.sarif
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

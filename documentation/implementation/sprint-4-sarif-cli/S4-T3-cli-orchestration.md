@@ -17,7 +17,7 @@ output. This is the deliverable that makes PyReach usable and CI-integrable.
 
 - All analysis modules merged.
 - `argparse` (stdlib) chosen; no Click dependency (`03-...md` §Technology Stack).
-- `pyproject.toml` has `[tool.poetry.scripts] pyreach = "pyreach.cli:main"`.
+- `pyproject.toml` has `[project.scripts] pyreach = "pyreach.cli:main"`.
 
 ## Essential Sub-tasks
 
@@ -112,10 +112,10 @@ Use the S3-T8 synthetic projects as scan targets.
 ## Verification
 
 ```bash
-poetry install
-poetry run pyreach --help
-poetry run pyreach tests/fixtures/projects/linear_reachable -f text
-poetry run pytest tests/e2e -q
+uv sync
+uv run pyreach --help
+uv run pyreach tests/fixtures/projects/linear_reachable -f text
+uv run pytest tests/e2e -q
 ```
 
 ## Edge Cases & Pitfalls

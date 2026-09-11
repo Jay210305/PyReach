@@ -112,9 +112,9 @@ Create `tests/unit/test_exit_codes.py` and extend `tests/e2e/test_cli_invocation
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/test_exit_codes.py tests/e2e -q
-poetry run pyreach tests/fixtures/projects/linear_reachable; echo $LASTEXITCODE
-poetry run pyreach tests/fixtures/projects/linear_reachable --no-fail; echo $LASTEXITCODE
+uv run pytest tests/unit/test_exit_codes.py tests/e2e -q
+uv run pyreach tests/fixtures/projects/linear_reachable; echo $LASTEXITCODE
+uv run pyreach tests/fixtures/projects/linear_reachable --no-fail; echo $LASTEXITCODE
 ```
 
 ## Edge Cases & Pitfalls

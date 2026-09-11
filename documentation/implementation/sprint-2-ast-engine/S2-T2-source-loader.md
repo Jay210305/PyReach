@@ -93,8 +93,8 @@ Build a synthetic tree with `tmp_path`: `venv/x.py`, `pkg/a.py`, `pkg/__pycache_
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/loaders/test_source.py -q
-poetry run pytest tests/unit/loaders --cov=pyreach.loaders --cov-report=term-missing
+uv run pytest tests/unit/loaders/test_source.py -q
+uv run pytest tests/unit/loaders --cov=pyreach.loaders --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

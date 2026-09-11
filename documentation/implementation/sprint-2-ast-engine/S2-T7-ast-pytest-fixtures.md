@@ -95,9 +95,9 @@ Run coverage on `pyreach/ast/` and `pyreach/loaders/`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/ast tests/unit/loaders -q
-poetry run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
-poetry run pytest tests/unit/loaders --cov=pyreach.loaders --cov-report=term-missing
+uv run pytest tests/unit/ast tests/unit/loaders -q
+uv run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
+uv run pytest tests/unit/loaders --cov=pyreach.loaders --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

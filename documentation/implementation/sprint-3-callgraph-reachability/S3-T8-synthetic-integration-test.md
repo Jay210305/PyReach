@@ -97,8 +97,8 @@ def test_scenario(tmp_path, scenario, expected):
 ## Verification
 
 ```bash
-poetry run pytest tests/integration/test_reachability_scenarios.py -q
-poetry run pytest tests/integration -q
+uv run pytest tests/integration/test_reachability_scenarios.py -q
+uv run pytest tests/integration -q
 ```
 
 ## Edge Cases & Pitfalls

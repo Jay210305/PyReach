@@ -105,8 +105,8 @@ Create `tests/unit/callgraph/test_nodes.py` and `test_edges.py`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/callgraph/test_nodes.py tests/unit/callgraph/test_edges.py -q
-poetry run mypy pyreach/callgraph/nodes.py pyreach/callgraph/edges.py
+uv run pytest tests/unit/callgraph/test_nodes.py tests/unit/callgraph/test_edges.py -q
+uv run mypy pyreach/callgraph/nodes.py pyreach/callgraph/edges.py
 ```
 
 ## Edge Cases & Pitfalls

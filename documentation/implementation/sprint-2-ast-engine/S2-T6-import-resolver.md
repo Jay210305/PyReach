@@ -118,8 +118,8 @@ Create `tests/unit/ast/test_resolver.py`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/ast/test_resolver.py -q
-poetry run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
+uv run pytest tests/unit/ast/test_resolver.py -q
+uv run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

@@ -9,53 +9,75 @@
 - POSIX-compatible filesystem or Windows NTFS
 
 ### Development Environment Setup
+
+PyReach uses [uv](https://docs.astral.sh/uv/) for dependency management and a project-local
+`.venv`. `uv.lock` is committed for reproducible installs.
+
 ```bash
 # Clone repository
 git clone <repo-url> pyreach
 cd pyreach
 
-# Install Poetry if not present
-curl -sSL https://install.python-poetry.org | python3 -
+# Install uv (if not present)
+# Windows PowerShell:
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# macOS / Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies and create virtual environment
-poetry install --with dev
+# Create the virtual environment and install all dependencies (runtime + dev)
+uv sync
 
-# Activate shell
-poetry shell
+# Run commands inside .venv (no activation required)
+uv run pytest
+uv run pyreach --version
 
-# Verify installation
-pyreach --version
+# Activate the environment (optional)
+# Windows: .\.venv\Scripts\Activate.ps1
+# POSIX:   source .venv/bin/activate
 ```
 
-### Poetry pyproject.toml Snippet
+### pyproject.toml Snippet
+
+This mirrors the checked-in root `pyproject.toml`.
+
 ```toml
-[tool.poetry]
+[project]
 name = "pyreach"
 version = "0.1.0"
 description = "Static reachability analysis for Python dependency vulnerabilities"
-authors = ["Julio Centeno <...>", "Jose Alonso Yanez <...>"]
 readme = "README.md"
-license = "MIT"
+license = { text = "MIT" }
+authors = [
+    { name = "Julio Centeno" },
+    { name = "Jose Alonso Yanez" },
+]
+requires-python = ">=3.10"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-networkx = "^3.0"
-jsonschema = "^4.0"
-packaging = "^23.0"
+dependencies = [
+    "networkx>=3.0",
+    "jsonschema>=4.0",
+    "packaging>=23.0",
+    "pyyaml>=6.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.0"
-pytest-cov = "^4.0"
-black = "^23.0"
-mypy = "^1.0"
-ruff = "^0.1.0"
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-xdist>=3.0",
+    "factory-boy>=3.3",
+    "freezegun>=1.0",
+    "black>=23.0",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+]
 
-[tool.poetry.scripts]
+[project.scripts]
 pyreach = "pyreach.cli:main"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 ```
 
 ## 2. Package Structure

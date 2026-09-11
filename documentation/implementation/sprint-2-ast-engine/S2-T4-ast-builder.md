@@ -125,8 +125,8 @@ roadmap criterion "parses 50 diverse Python files without syntax errors".
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/ast/test_builder.py -q
-poetry run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
+uv run pytest tests/unit/ast/test_builder.py -q
+uv run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

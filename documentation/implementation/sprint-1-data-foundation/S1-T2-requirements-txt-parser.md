@@ -124,9 +124,9 @@ class RequirementsTxtParser:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/parsers/test_manifest_requirements.py -q
-poetry run pytest tests/unit/parsers --cov=pyreach.parsers --cov-report=term-missing
-poetry run ruff check pyreach/parsers/manifest.py
+uv run pytest tests/unit/parsers/test_manifest_requirements.py -q
+uv run pytest tests/unit/parsers --cov=pyreach.parsers --cov-report=term-missing
+uv run ruff check pyreach/parsers/manifest.py
 ```
 
 ## Edge Cases & Pitfalls
