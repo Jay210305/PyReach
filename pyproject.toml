@@ -46,6 +46,7 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+pythonpath = ["."]
 markers = [
     "performance: long-running performance tests (deselect with '-m \"not performance\"')",
 ]
