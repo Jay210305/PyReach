@@ -253,7 +253,7 @@ Use `subprocess.run` to invoke the installed CLI and verify behavior:
 test:
   stage: test
   script:
-    - poetry run pytest --cov=pyreach --cov-report=xml --cov-fail-under=80
+    - uv run pytest --cov=pyreach --cov-report=xml --cov-fail-under=80
   coverage: '/TOTAL.+\s(\d+%)$/'
   artifacts:
     reports:

@@ -92,14 +92,14 @@ For determinism, construct a fake dist-info directory under `tmp_path` with `MET
 ## Acceptance Criteria
 
 - Resolves 100% of installed packages in a test venv. ✅ (roadmap S2-T3)
-- Correctly maps all packages in a Poetry virtual environment. ✅ (roadmap Sprint 2 DoD)
+- Correctly maps all packages in a uv virtual environment. ✅ (roadmap Sprint 2 DoD)
 - Missing packages degrade gracefully with warnings.
 
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/loaders/test_packages.py -q
-poetry run python -c "from pyreach.loaders.packages import PackageResolver; r=PackageResolver(); print(r.resolve('networkx'))"
+uv run pytest tests/unit/loaders/test_packages.py -q
+uv run python -c "from pyreach.loaders.packages import PackageResolver; r=PackageResolver(); print(r.resolve('networkx'))"
 ```
 
 ## Edge Cases & Pitfalls
@@ -119,6 +119,6 @@ poetry run python -c "from pyreach.loaders.packages import PackageResolver; r=Pa
 ## Definition of Done
 
 - [ ] Resolver + tests merged.
-- [ ] Tested against a real Poetry venv (networkx, jsonschema).
+- [ ] Tested against a real uv virtual environment (networkx, jsonschema).
 - [ ] Graceful degradation verified.
 - [ ] Coverage >=85% on `loaders/`.

@@ -25,7 +25,7 @@ business acceptance test.
 
 ### 7.1 Prepare the deployment package (1 h)
 
-- Build a distributable: `poetry build` (wheel + sdist) or `pip install .`.
+- Build a distributable: `uv build` (wheel + sdist) or `pip install .`.
 - Publish to a location the runner can reach (internal PyPI, artifact store, or Git tag).
 - Pin `PYREACH_VERSION` in the CI variables.
 - Confirm the OSV DB exists and is <7 days old (`09-...md` §5).

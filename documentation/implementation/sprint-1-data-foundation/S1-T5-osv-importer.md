@@ -136,8 +136,8 @@ Add a test (or manual script) that generates/ships a 10k-record JSONL and assert
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/osv tests/unit/parsers/test_osv_json.py -q
-poetry run pytest -m performance tests/unit/osv -q
+uv run pytest tests/unit/osv tests/unit/parsers/test_osv_json.py -q
+uv run pytest -m performance tests/unit/osv -q
 python -c "from pyreach.osv.importer import OSVImporter; print(OSVImporter('C:/tmp/osv.db').import_file('tests/fixtures/osv_records/sample.jsonl'))"
 ```
 

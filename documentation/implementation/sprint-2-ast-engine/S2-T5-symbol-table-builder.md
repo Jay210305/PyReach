@@ -133,8 +133,8 @@ Create `tests/unit/ast/test_symbols.py`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/ast/test_symbols.py -q
-poetry run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
+uv run pytest tests/unit/ast/test_symbols.py -q
+uv run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

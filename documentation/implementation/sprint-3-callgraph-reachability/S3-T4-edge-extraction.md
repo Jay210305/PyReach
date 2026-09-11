@@ -114,8 +114,8 @@ Create `tests/unit/callgraph/test_edge_extraction.py`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/callgraph/test_edge_extraction.py -q
-poetry run pytest tests/unit/callgraph --cov=pyreach.callgraph --cov-report=term-missing
+uv run pytest tests/unit/callgraph/test_edge_extraction.py -q
+uv run pytest tests/unit/callgraph --cov=pyreach.callgraph --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

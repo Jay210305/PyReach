@@ -124,9 +124,9 @@ the MR thread. Record the review hint in the commit message (e.g. `S1-T1 reviewe
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/parsers/test_manifest_contract.py -q
-poetry run ruff check pyreach/parsers/manifest.py pyreach/exceptions.py
-poetry run mypy pyreach/parsers/manifest.py
+uv run pytest tests/unit/parsers/test_manifest_contract.py -q
+uv run ruff check pyreach/parsers/manifest.py pyreach/exceptions.py
+uv run mypy pyreach/parsers/manifest.py
 ```
 
 ## Edge Cases & Pitfalls

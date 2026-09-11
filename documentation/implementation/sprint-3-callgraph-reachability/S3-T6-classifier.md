@@ -116,8 +116,8 @@ asserts only the "all clear" combination yields `NOT_REACHABLE`.
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/reachability/test_classifier.py -q
-poetry run pytest tests/unit/reachability --cov=pyreach.reachability --cov-report=term-missing
+uv run pytest tests/unit/reachability/test_classifier.py -q
+uv run pytest tests/unit/reachability --cov=pyreach.reachability --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

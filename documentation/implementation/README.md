@@ -25,6 +25,23 @@ implementation/
 Each sprint folder contains one Markdown file per roadmap task, named
 `sprint-task-<slug>.md`, e.g. `S1-T2-requirements-txt-parser.md`.
 
+## Environment & Tooling
+
+PyReach uses **uv** as its single dependency/environment manager and a project-local `.venv`.
+
+```powershell
+uv sync                       # install runtime + dev dependencies from uv.lock
+uv run pytest                 # runs inside .venv
+uv run ruff check .
+uv run mypy pyreach
+uv add <pkg> / uv add --dev <pkg>
+```
+
+- Python: `requires-python = ">=3.10"`; the checked-in dev interpreter is 3.14 (see `AGENTS.md`).
+- `uv.lock` is committed; CI installs with `uv sync --locked`.
+- All Verification sections in this folder use `uv run`.
+- Bootstrap details live in [S1-T0](sprint-1-data-foundation/S1-T0-environment-bootstrap-uv.md).
+
 ## File Format
 
 Every task file uses the same structure:
@@ -51,6 +68,7 @@ Every task file uses the same structure:
   `ReachabilityResult`) are defined in `03-technical-specifications.md` §3.
 - **TDD is mandatory**: each implementation sub-task is preceded by its failing test.
 - **No comments in code** unless a non-obvious algorithm requires one; rely on docstrings.
+- **Commands use uv**: run everything via `uv run ...` against the local `.venv`.
 - Coverage gate: `>=80%` overall, higher on critical modules (see `08-testing-strategy.md` §7).
 
 ## Task Index
@@ -59,6 +77,7 @@ Every task file uses the same structure:
 
 | Task | File | Roadmap |
 |------|------|---------|
+| S1-T0 | [Environment bootstrap with uv (all dependencies)](sprint-1-data-foundation/S1-T0-environment-bootstrap-uv.md) | *(added)* |
 | S1-T1 | [Design Dependency dataclass and parser interface](sprint-1-data-foundation/S1-T1-dependency-dataclass-and-parser-interface.md) | S1-T1 |
 | S1-T2 | [Implement requirements.txt parser](sprint-1-data-foundation/S1-T2-requirements-txt-parser.md) | S1-T2 |
 | S1-T3 | [Implement Pipfile.lock parser](sprint-1-data-foundation/S1-T3-pipfile-lock-parser.md) | S1-T3 |

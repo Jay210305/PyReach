@@ -68,16 +68,24 @@ Tests read these _and_ write inline variants to prove both paths.
 
 ### 6.4 Add coverage enforcement config (0.5 h)
 
-In `pyproject.toml`:
+The root `pyproject.toml` already defines the pytest configuration:
 
 ```toml
 [tool.pytest.ini_options]
-addopts = "--cov=pyreach --cov-report=term-missing --cov-report=xml"
-markers = ["performance: long-running performance tests"]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["performance: long-running performance tests (...)"]
 ```
 
-Set the global `--cov-fail-under=80` (see `08-testing-strategy.md` §7). Per-module thresholds
-(`parsers>=90`) are checked explicitly in a separate coverage test or CI step.
+Coverage is passed explicitly on the command line (not in `addopts`) so `uv run pytest` stays
+usable before the `pyreach/` package exists:
+
+```powershell
+uv run pytest -m "not performance" --cov=pyreach --cov-report=term-missing --cov-report=xml
+```
+
+Set the global `--cov-fail-under=80` in CI (see `08-testing-strategy.md` §7). Per-module
+thresholds (`parsers>=90`) are checked explicitly in a separate coverage test or CI step.
 
 ### 6.5 Add edge-case and regression tests (1.0 h)
 
@@ -115,8 +123,8 @@ platform-specific branches with `# pragma: no cover` and a justification.
 ## Verification
 
 ```bash
-poetry run pytest --cov=pyreach --cov-report=term-missing
-poetry run pytest tests/unit/parsers -q -n auto
+uv run pytest --cov=pyreach --cov-report=term-missing
+uv run pytest tests/unit/parsers -q -n auto
 ```
 
 ## Edge Cases & Pitfalls

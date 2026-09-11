@@ -69,7 +69,7 @@ Phase 2 is organized into **4 biweekly sprints** totaling 240 person-hours. Each
 ### Definition of Done
 - `ASTBuilder` and `SymbolTableBuilder` pass all tests on real-world library code (requests, Flask, FastAPI stubs).
 - Import resolution works for absolute imports, relative imports (intra-package), and star imports (`from module import *`).
-- `PackageResolver` correctly maps all packages in a Poetry virtual environment.
+- `PackageResolver` correctly maps all packages in a uv virtual environment.
 - Coverage >=80% on new code.
 
 ### Risk Mitigations
@@ -143,7 +143,7 @@ Phase 2 is organized into **4 biweekly sprints** totaling 240 person-hours. Each
 | S4-T8 | Write CLI user manual and architecture overview doc | 4 | Joint | Approved by Dr. Torres and Lidercom key users |
 
 ### Definition of Done
-- CLI is installable via `pip install .` or `poetry install` and runs on Python 3.10+ without extra dependencies beyond those in `pyproject.toml`.
+- CLI is installable via `pip install .` or `uv sync` and runs on Python 3.10+ without extra dependencies beyond those in `pyproject.toml`.
 - SARIF output is accepted by GitLab CI security dashboard (tested on Lidercom runner).
 - Scan completes in <45s on target microservice.
 - All integration tests pass; coverage >=80% overall.

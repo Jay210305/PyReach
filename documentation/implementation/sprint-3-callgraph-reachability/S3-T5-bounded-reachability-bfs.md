@@ -129,8 +129,8 @@ Create `tests/unit/reachability/test_analyzer.py` (fixture `simple_graph` from
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/reachability/test_analyzer.py -q
-poetry run pytest tests/unit/reachability --cov=pyreach.reachability --cov-report=term-missing
+uv run pytest tests/unit/reachability/test_analyzer.py -q
+uv run pytest tests/unit/reachability --cov=pyreach.reachability --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

@@ -122,8 +122,8 @@ Create `tests/unit/output/test_sarif_serialization.py`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/output -q
-poetry run pytest tests/unit/output --cov=pyreach.output --cov-report=term-missing
+uv run pytest tests/unit/output -q
+uv run pytest tests/unit/output --cov=pyreach.output --cov-report=term-missing
 ```
 
 ## Edge Cases & Pitfalls

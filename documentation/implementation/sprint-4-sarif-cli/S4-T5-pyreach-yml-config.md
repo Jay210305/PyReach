@@ -18,7 +18,7 @@ candidate** for Sprint 4; it is isolated behind a config resolver.
 
 - CLI orchestrator in place (S4-T3).
 - A YAML parser available. `PyYAML` is not yet a dependency; add `pyyaml = "^6.0"` to
-  `[tool.poetry.dependencies]` (document the new dependency) or write a minimal parser for the
+  `[project.dependencies]` (document the new dependency) or write a minimal parser for the
   restricted schema. Prefer `PyYAML` for correctness.
 
 ## Essential Sub-tasks
@@ -110,8 +110,8 @@ Create `tests/unit/test_config.py`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/test_config.py -q
-poetry run pyreach tests/fixtures/projects/linear_reachable -f text
+uv run pytest tests/unit/test_config.py -q
+uv run pyreach tests/fixtures/projects/linear_reachable -f text
 ```
 
 ## Edge Cases & Pitfalls

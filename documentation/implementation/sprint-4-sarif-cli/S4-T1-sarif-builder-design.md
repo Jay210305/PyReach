@@ -112,7 +112,7 @@ Create `tests/unit/output/test_sarif_model.py`:
 ## Verification
 
 ```bash
-poetry run pytest tests/unit/output/test_sarif_model.py -q
+uv run pytest tests/unit/output/test_sarif_model.py -q
 python -c "import json,jsonschema; jsonschema.validate(json.load(open('minimal.sarif')), json.load(open('tests/fixtures/sarif_schema/sarif-schema-2.1.0.json')))"
 ```
 

@@ -219,7 +219,7 @@ CREATE TABLE reachability_results (
 ### Local Developer Mode
 ```
 Developer Workstation
-├── PyReach CLI (Poetry venv)
+├── PyReach CLI (uv-managed .venv)
 ├── Local OSV SQLite DB (~/.pyreach/osv.db)
 └── Target Python Project
     ├── src/
@@ -230,7 +230,7 @@ Developer Workstation
 ### CI/CD Runner Mode (GitLab / Jenkins)
 ```
 Corporate CI Runner (Lidercom On-Prem)
-├── PyReach installed via pip / Poetry
+├── PyReach installed via uv (uv sync) or pip
 ├── Pre-seeded OSV SQLite DB (updated weekly via cron)
 └── Build Pipeline Stage
     ├── Unit Tests
@@ -243,7 +243,7 @@ Corporate CI Runner (Lidercom On-Prem)
 | Layer | Technology | Version | Justification |
 |-------|-----------|---------|---------------|
 | Language | Python | >=3.10 | Native `ast` module improvements, pattern matching, type hints |
-| Dependency Mgmt | Poetry | >=1.7 | Reproducible builds, lock file, virtual env management |
+| Dependency Mgmt | uv | >=0.5 | Reproducible builds via `uv.lock`, fast env + dependency management |
 | Graph Library | NetworkX | >=3.0 | Mature DiGraph, optimized traversal, serialization |
 | Database | SQLite | >=3.39 (stdlib) | Zero-config, local file, sufficient for advisory dataset |
 | Testing | pytest | >=7.0 | TDD fixtures, parametrization, coverage plugins |

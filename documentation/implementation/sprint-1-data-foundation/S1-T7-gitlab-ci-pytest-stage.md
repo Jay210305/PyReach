@@ -6,17 +6,19 @@
 | Owner | Julio Centeno |
 | Effort | 2 h |
 | Dependencies | S1-T6 (tests runnable locally) |
-| Related docs | `09-cicd-integration.md` §2.1, §3.1; `08-testing-strategy.md` §7 |
+| Related docs | `09-cicd-integration.md` §2.1, §3.1; `08-testing-strategy.md` §7; `AGENTS.md` (uv commands) |
 
 ## Purpose
 
 Automate quality gates so every push runs the test suite and blocks merges on failure.
-This is the foundation for the security stage added in Sprint 4.
+This is the foundation for the security stage added in Sprint 4. The project uses **uv** for
+dependency management and the local `.venv` as the project environment.
 
 ## Preconditions
 
 - A GitLab project with at least one available runner (shared or `lidercom-local-runner`).
-- `pyproject.toml` and a working `poetry install --with dev`.
+- Root `pyproject.toml` and committed `uv.lock` (created during environment bootstrap).
+- Local verification works: `uv sync` then `uv run pytest`.
 
 ## Essential Sub-tasks
 
@@ -27,7 +29,7 @@ stages:
   - test
 
 variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 default:
   image: python:3.10-slim
@@ -35,11 +37,10 @@ default:
 test:
   stage: test
   before_script:
-    - pip install poetry
-    - poetry config virtualenvs.create false
-    - poetry install --with dev
+    - pip install uv
+    - uv sync
   script:
-    - poetry run pytest -m "not performance" --cov=pyreach --cov-report=xml --cov-report=term --cov-fail-under=80
+    - uv run pytest -m "not performance" --cov=pyreach --cov-report=xml --cov-report=term --cov-fail-under=80
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
     when: always
@@ -50,19 +51,21 @@ test:
     paths:
       - coverage.xml
   cache:
-    key: "$CI_COMMIT_REF_SLUG"
+    key:
+      files:
+        - uv.lock
     paths:
-      - .cache/pip
-      - .venv/
+      - .cache/uv
 ```
 
-### 7.2 Configure Poetry inside CI (0.5 h)
+### 7.2 Configure uv inside CI (0.5 h)
 
-- Pin the Poetry version used locally to avoid lockfile drift (`pip install poetry==1.7.*`).
-- If the project only has `pyproject.toml` without a Poetry lock yet, generate and commit
-  `poetry.lock` first.
-- Ensure `poetry install` does not create a venv (`virtualenvs.create false`) so `pytest` is
-  on the image PATH.
+- Install `uv` from PyPI (`pip install uv`) or use the official `ghcr.io/astral-sh/uv` image.
+- `uv sync` creates/uses `.venv` and installs the locked runtime + dev dependencies. Pin the
+  lockfile by committing `uv.lock`; uv fails the build if `pyproject.toml` and `uv.lock`
+  drift (`--locked` can enforce this).
+- Prefer `uv sync --locked` in CI so an out-of-date lock is an explicit error.
+- `uv run` executes commands inside `.venv` without manual activation.
 
 ### 7.3 Add branch protection / merge gating (0.5 h)
 
@@ -70,14 +73,14 @@ test:
 - Mark the `test` job as required.
 - Document the setting in the MR description (this is a repo setting, not a file).
 
-### 7.4 Add a lint job (optional but recommended) (0.25 h)
+### 7.4 Add a lint/type job (optional but recommended) (0.25 h)
 
 ```yaml
 lint:
   stage: test
   script:
-    - poetry run ruff check pyreach tests
-    - poetry run mypy pyreach
+    - uv run ruff check pyreach tests
+    - uv run mypy pyreach
 ```
 
 Keep `allow_failure: false` so lint errors block merge (`10-risk-and-contingency-plan.md` §6).
@@ -91,7 +94,7 @@ Keep `allow_failure: false` so lint errors block merge (`10-risk-and-contingency
 ## Deliverables
 
 - `.gitlab-ci.yml`
-- `poetry.lock` (if not already present)
+- `uv.lock` (committed; created during bootstrap)
 - Documented branch-protection configuration.
 
 ## Acceptance Criteria
@@ -103,26 +106,29 @@ Keep `allow_failure: false` so lint errors block merge (`10-risk-and-contingency
 ## Verification
 
 - Push to a feature branch and observe the GitLab pipeline.
-- Locally reproduce: `poetry run pytest -m "not performance" --cov=pyreach --cov-fail-under=80`.
+- Locally reproduce: `uv sync` then
+  `uv run pytest -m "not performance" --cov=pyreach --cov-fail-under=80`.
 
 ## Edge Cases & Pitfalls
 
 - `coverage: '/TOTAL.../'` regex must match pytest-cov's output format; verify against the
   actual line, not an assumed layout.
-- Poetry lockfiles are platform-sensitive; the CI image (`python:3.10-slim`, Linux) may resolve
-  differently from Windows dev machines. If lock generation differs, use `poetry install`
-  without a committed lock or add a Linux lock job.
-- Cache `.venv/` only if installs are slow; a stale cache can mask dependency changes — bump
-  the cache key when `poetry.lock` changes.
+- The dev venv is Python 3.14 while CI runs 3.10; `uv.lock` is universal, but ensure the code
+  stays compatible with `requires-python = ">=3.10"` (no 3.11+ only syntax).
+- Cache `.cache/uv` (download cache), keyed on `uv.lock`; do not cache `.venv/` (uv recreates
+  it quickly and a stale venv can mask dependency changes).
+- If `uv` is unavailable in the runner image, use the official
+  `ghcr.io/astral-sh/uv:python3.10-bookworm` image instead of installing it.
 
 ## Risks / Scope Cuts
 
-- If no GitLab runner is available, fall back to a GitHub Actions workflow with equivalent
+- If no GitLab runner is available, fall back to a GitHub Actions workflow with equivalent uv
   steps and document the substitution (roadmap allows "GitLab or Jenkinsfile").
 
 ## Definition of Done
 
 - [ ] `.gitlab-ci.yml` merged and green.
+- [ ] `uv.lock` committed and CI uses `--locked`.
 - [ ] Merge is blocked on failing tests.
 - [ ] Coverage artifact present.
 - [ ] Pipeline link recorded in the sprint review notes.
