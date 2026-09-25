@@ -1,191 +1,418 @@
-# Implementation Roadmap
+# Hoja de Ruta de Implementación
 
-## Phase 2 Development Plan (Weeks 5-12)
+## Plan de desarrollo de la Fase 2 (semanas 5-12)
 
-Phase 2 is organized into **4 biweekly sprints** totaling 240 person-hours. Each sprint has defined deliverables, acceptance criteria, estimated effort, and risk mitigations aligned with the project constraints (TIME is non-negotiable, COST is capped, SCOPE is negotiable).
+La Fase 2 se organiza en **4 sprints bisemanales** que totalizan **240 horas-persona**. Cada sprint
+define entregables, criterios de aceptación, esfuerzo estimado y mitigaciones de riesgo alineadas
+con las restricciones del proyecto (**el TIEMPO es innegociable, el COSTO está topado y el ALCANCE
+es negociable**).
 
----
-
-## Sprint 1: Dependency Parser, OSV Ingestion, and TDD Fixtures
-**Duration**: Weeks 5-6  
-**Effort**: 40 hours (Julio Centeno)  
-**Goal**: Establish the data ingestion pipeline and testing foundation.
-
-### Deliverables
-1. `pyreach.parsers.manifest` module with `requirements.txt` and `Pipfile.lock` support.
-2. `pyreach.osv.importer` module for bulk OSV JSON -> SQLite ingestion.
-3. `pyreach.db.schema.sql` DDL and `pyreach.db.connection` context manager.
-4. pytest fixture suite with 80%+ coverage for parser and importer modules.
-5. Initial CI pipeline configuration (GitLab `.gitlab-ci.yml` or Jenkinsfile) running tests on every commit.
-
-### Detailed Tasks
-
-| Task ID | Description | Effort (hrs) | Owner | Acceptance Criteria |
-|---------|-------------|--------------|-------|---------------------|
-| S1-T1 | Design `Dependency` dataclass and parser interface | 4 | Julio | Interface reviewed by Alonso; documented in docstrings |
-| S1-T2 | Implement `requirements.txt` regex/line parser | 8 | Julio | Passes 20 unit test cases including extras, markers, editable installs |
-| S1-T3 | Implement `Pipfile.lock` JSON parser | 6 | Julio | Passes 10 unit test cases; falls back gracefully if file missing |
-| S1-T4 | Design SQLite schema (advisories, affected_symbols, cg_nodes, cg_edges, reachability_results) | 4 | Julio | Schema reviewed; 3NF compliance check |
-| S1-T5 | Implement `OSVImporter` with JSONL streaming | 10 | Julio | Successfully ingests 10,000+ OSV PyPI records in <5 min |
-| S1-T6 | Write pytest fixtures and parametrized tests for parsers | 6 | Julio | >=80% branch coverage on parsers; all tests green |
-| S1-T7 | Set up GitLab CI runner stage for pytest | 2 | Julio | Pipeline runs on push; failure blocks merge |
-
-### Definition of Done
-- All S1 tasks complete and merged to `main`.
-- `pytest --cov` reports >=80% coverage on `parsers/` and `osv/`.
-- OSV SQLite DB can be generated from raw OSV JSONL dump via single command.
-- No critical or high bugs in SonarQube / ruff linting.
-
-### Risk Mitigations
-- **R7 (AST complexity slippage)**: Not applicable yet; buffer reserved for Sprint 2.
-- **R6 (Academic overload)**: Sprint 1 scheduled before midterm week 8.
+> **Documentos relacionados**
+> - [`AGENTS.md`](../AGENTS.md) — referencia operativa consolidada (entorno `uv`, contratos de datos, CLI).
+> - [`implementation/README.md`](implementation/README.md) — desglose de cada tarea en sub-tareas ejecutables.
+> - [`03-technical-specifications.md`](03-technical-specifications.md) — especificación técnica y estructura de paquete.
 
 ---
 
-## Sprint 2: AST Syntactic Engine and Alias Resolution
-**Duration**: Weeks 7-8  
-**Effort**: 45 hours (Julio Centeno)  
-**Goal**: Build the static analysis foundation for code comprehension.
+## Estado de avance
 
-### Deliverables
-1. `pyreach.ast.builder` module: parse `.py` files into `ModuleAST` objects.
-2. `pyreach.ast.symbols` module: per-module symbol table construction.
-3. `pyreach.ast.resolver` module: import alias resolution across application and site-packages.
-4. `pyreach.loaders.source` and `pyreach.loaders.packages` modules.
-5. Comprehensive test suite for AST traversal, symbol tables, and import resolution.
+| Indicador | Valor |
+|-----------|-------|
+| Última actualización | 2026-09-25 |
+| Fase activa | Fase 2 — Desarrollo (semanas 5-12) |
+| Sprint activo | **Sprint 1 completado (8/8) — Preparado para Sprint 2: Motor sintáctico AST y resolución de alias (semanas 7-8)** |
+| Tareas completadas | 8 / 31 (100 % Sprint 1, Hito M1 Fundación de Datos alcanzado) |
+| Avance del Sprint 1 | 8 / 8 tareas (100 %) |
+| Estado de la build | `uv run pytest` → **89 tests aprobados** (cobertura global: 96 %, parsers: 97 %, osv: 96 %) |
+| Intérprete del `.venv` | CPython 3.14 (requisito declarado: `>=3.10`) |
 
-### Detailed Tasks
+**Leyenda de estados**: ✅ Completado · 🟡 En curso · ⬜ Pendiente · ⏸️ Bloqueado
 
-| Task ID | Description | Effort (hrs) | Owner | Acceptance Criteria |
-|---------|-------------|--------------|-------|---------------------|
-| S2-T1 | Mitigation M1: Intensive self-study on `ast` module internals (2 days) | 16 | Julio | Can manually traverse and classify all node types in sample files |
-| S2-T2 | Implement `SourceLoader` with ignore pattern support | 4 | Julio | Discovers all `.py` files excluding `venv/`, `__pycache__/` |
-| S2-T3 | Implement `PackageResolver` mapping package names to site-packages paths | 6 | Julio | Resolves 100% of installed packages in a test venv |
-| S2-T4 | Implement `ASTBuilder`: parse files, compute module FQN, wrap in `ModuleAST` | 8 | Julio | Parses 50 diverse Python files without syntax errors; skips invalid files with warning |
-| S2-T5 | Implement `SymbolTableBuilder`: map local names, imports, `from...import` | 10 | Julio | Correctly resolves `import numpy as np`, `from x import y as z`, `from . import sibling` |
-| S2-T6 | Implement `ImportResolver`: cross-module alias to fully qualified names | 8 | Julio | Given `import requests`, resolves `requests.get` to `requests.api.get` |
-| S2-T7 | Write pytest fixtures with real-world code samples (requests, flask snippets) | 6 | Julio | >=80% coverage on `ast/` and `loaders/` modules |
+### Evidencia del avance verificado
 
-### Definition of Done
-- `ASTBuilder` and `SymbolTableBuilder` pass all tests on real-world library code (requests, Flask, FastAPI stubs).
-- Import resolution works for absolute imports, relative imports (intra-package), and star imports (`from module import *`).
-- `PackageResolver` correctly maps all packages in a uv virtual environment.
-- Coverage >=80% on new code.
-
-### Risk Mitigations
-- **R7 (AST complexity)**: Mitigation M1 (self-study) front-loaded in S2-T1. If slippage >15%, scope trimmed: deprioritize `Pipfile.lock` support or complex `__init__.py` namespace packages.
-- **R2 (Dynamic constructs)**: Not handled yet; deferred to Sprint 3 heuristic design.
+| Artefacto | Contenido |
+|-----------|-----------|
+| `pyproject.toml` + `uv.lock` + `.venv/` | Entorno reproducible con `uv` y lockfile versionado en el repositorio (`S1-T0`) |
+| `pyreach/__init__.py` | Declaración del paquete y `__version__ = "0.1.0"` |
+| `pyreach/exceptions.py` | Jerarquía `PyReachError` → `ConfigError`, `ParseError`, `OSVError`, `AnalysisError`, `OutputError` |
+| `pyreach/parsers/manifest.py` | `Dependency`, `normalize_name()`, protocolo `ManifestParser`, `RequirementsTxtParser`, `PipfileLockParser`, `select_manifest_parser` (`S1-T1`, `S1-T2`, `S1-T3`) |
+| `pyreach/parsers/osv_json.py` | `Vulnerability`, extractor de rangos y símbolos afectados, evaluador de versiones (`S1-T5`) |
+| `pyreach/db/schema.sql` + `connection.py` | DDL 3NF (7 tablas e índices) y gestor de conexión contextual con control transaccional (`S1-T4`) |
+| `pyreach/db/repositories.py` | Patrón repositorio con `AdvisoryRepository` para upsert y búsqueda optimizada (`S1-T5`) |
+| `pyreach/osv/importer.py` | Ingesta en streaming JSONL/directorios, sincronización incremental y callable `sync_osv` (`S1-T5`) |
+| `tests/conftest.py` + `tests/fixtures/` | Fixtures reutilizables entre sprints, fábricas de manifiestos y volcados sintéticos (`S1-T6`) |
+| `.gitlab-ci.yml` | Pipeline CI de calidad con etapas `lint` (ruff/mypy) y `test` (cobertura Cobertura $\ge 80\%$) (`S1-T7`) |
+| `tests/unit/` (89 pruebas) | Cobertura global 96 % (`parsers/` 97 %, `osv/` 96 %, `db/` 95 %) sin dependencias de red |
 
 ---
 
-## Sprint 3: Call Graph Construction (NetworkX) and Reachability Algorithm
-**Duration**: Weeks 9-10  
-**Effort**: 45 hours (Jose Alonso Yanez)  
-**Goal**: Construct the interprocedural call graph and implement bounded reachability analysis.
+## Sprint 1: Parser de dependencias, ingesta OSV y fixtures TDD
 
-### Deliverables
-1. `pyreach.callgraph.engine` module: NetworkX DiGraph construction from ASTs.
-2. `pyreach.callgraph.nodes` and `pyreach.callgraph.edges` modules.
-3. `pyreach.reachability.analyzer` module: bounded BFS/DFS traversal.
-4. `pyreach.reachability.classifier` module: result classification logic.
-5. `pyreach.reachability.entrypoints` module: entry point detection and configuration.
-6. Integration tests verifying end-to-end reachability on synthetic vulnerable projects.
+**Duración**: semanas 5-6
+**Esfuerzo**: 44 horas (40 h del plan original + 4 h de la tarea añadida S1-T0), asignadas a Julio Centeno
+**Estado**: ✅ Completado (8/8 tareas)
+**Objetivo**: Establecer la tubería de ingesta de datos y la base de pruebas.
 
-### Detailed Tasks
+### Entregables
 
-| Task ID | Description | Effort (hrs) | Owner | Acceptance Criteria |
-|---------|-------------|--------------|-------|---------------------|
-| S3-T1 | Mitigation M3: Study NetworkX DiGraph APIs and PyCG paper algorithms | 8 | Alonso | Can build, traverse, and serialize DiGraphs; understands PyCG node/edge types |
-| S3-T2 | Design `CGNode` and `CGEdge` dataclasses with type annotations | 4 | Alonso | Reviewed by Julio; documented; immutable/frozen |
-| S3-T3 | Implement node extraction: functions, methods, lambdas, classes | 10 | Alonso | Extracts >=95% of callable nodes in standard Python code |
-| S3-T4 | Implement edge extraction: static calls, inheritance, imports | 12 | Alonso | Correctly links `caller()` -> `callee()` for direct and method calls |
-| S3-T5 | Implement bounded reachability BFS (max depth k=5) with memoization | 12 | Alonso | Completes on 100-node graph in <100ms; handles cycles gracefully |
-| S3-T6 | Implement classifier: REACHABLE / NOT_REACHABLE / POTENTIALLY_REACHABLE | 6 | Alonso | Unit tests for all three categories; 0 false negatives on test suite |
-| S3-T7 | Implement entry point auto-detection (`__main__`, CLI-configured) | 4 | Alonso | Detects `if __name__ == "__main__"` and respects `-e` overrides |
-| S3-T8 | Integration test: synthetic project with known reachable/unreachable CVEs | 6 | Alonso | Passes 5 synthetic scenarios with 100% accuracy |
+1. Módulo `pyreach.parsers.manifest` con soporte para `requirements.txt` y `Pipfile.lock`. ✅
+2. Módulo `pyreach.osv.importer` para la ingesta masiva de JSON de OSV hacia SQLite. ✅
+3. DDL `pyreach.db.schema.sql` y gestor de contexto `pyreach.db.connection`. ✅
+4. Suite de fixtures de pytest con cobertura ≥80 % para los módulos de parseo e ingesta. ✅
+5. Configuración inicial del pipeline de CI ejecutando pruebas en cada commit. ✅
 
-### Definition of Done
-- Call graph builds correctly for a medium-sized project (e.g., Flask app with 10 deps) in <10 seconds.
-- Reachability analyzer classifies all synthetic test CVEs correctly.
-- POTENTIALLY_REACHABLE heuristic implemented for `eval`, `exec`, `getattr`, `importlib` patterns.
-- Coverage >=80% on `callgraph/` and `reachability/`.
+### Tareas detalladas
 
-### Risk Mitigations
-- **R1 (Combinatorial explosion)**: Limit max depth to k=5. Use NetworkX `DiGraph` (not `MultiDiGraph`) to collapse parallel edges. Monitor memory with `tracemalloc` in tests.
-- **R2 (Dynamic metaprogramming)**: Preventive heuristic: any call chain traversing a `DYNAMIC` edge or unresolved import defaults to POTENTIALLY_REACHABLE.
+| ID | Descripción | Esfuerzo (h) | Responsable | Estado | Criterio de aceptación |
+|----|-------------|--------------|-------------|--------|------------------------|
+| S1-T0 | *(Añadida)* Arranque del entorno con `uv` y todas las dependencias | 4 | Julio | ✅ | `.venv` creado desde `uv.lock`; `uv run pytest` ejecuta |
+| S1-T1 | Diseñar la dataclass `Dependency` y la interfaz del parser | 4 | Julio | ✅ | Interfaz revisada por Alonso; documentada en docstrings |
+| S1-T2 | Implementar el parser de `requirements.txt` | 8 | Julio | ✅ | Supera 20 casos de prueba: extras, markers e instalaciones editables |
+| S1-T3 | Implementar el parser de `Pipfile.lock` | 6 | Julio | ✅ | Supera 10 casos de prueba; degrada con gracia si falta el archivo |
+| S1-T4 | Diseñar el esquema SQLite (advisories, affected_symbols, cg_nodes, cg_edges, reachability_results) | 4 | Julio | ✅ | Esquema revisado; verificación de cumplimiento 3FN |
+| S1-T5 | Implementar `OSVImporter` con streaming JSONL | 10 | Julio | ✅ | Ingesta 10 000+ registros PyPI de OSV en <5 min |
+| S1-T6 | Escribir fixtures de pytest y pruebas parametrizadas de los parsers | 6 | Julio | ✅ | Cobertura de rama ≥80 % en `parsers/`; todas las pruebas en verde |
+| S1-T7 | Configurar la etapa de pytest en el runner de GitLab CI | 2 | Julio | ✅ | El pipeline corre en cada push; el fallo bloquea el merge |
 
----
+### Definición de terminado (DoD)
 
-## Sprint 4: SARIF Serializer, CLI, and CI/CD Quality Gates
-**Duration**: Weeks 11-12  
-**Effort**: 42 hours (Jose Alonso Yanez)  
-**Goal**: Deliver the user-facing tool with standardized output and pipeline integration.
+- [x] Todas las tareas S1 completadas e integradas en `main`.
+- [x] `pytest --cov` reporta cobertura ≥80 % en `parsers/` y `osv/` (96 % global, 97 % parsers, 96 % osv).
+- [x] La base SQLite de OSV se genera desde el volcado JSONL con un único comando (`sync_osv`).
+- [x] Sin bugs críticos ni altos en el análisis de `ruff` y `mypy` estricto en verde.
 
-### Deliverables
-1. `pyreach.output.sarif` module: validated SARIF v2.1.0 serialization.
-2. `pyreach.cli` module: complete CLI with all specified options and exit codes.
-3. `pyreach.config` module: `.pyreach.yml` loader and validation.
-4. CI/CD integration scripts and documentation.
-5. Local runner deployment package for Lidercom's server.
-6. CLI user manual (Markdown).
+### Mitigaciones de riesgo
 
-### Detailed Tasks
-
-| Task ID | Description | Effort (hrs) | Owner | Acceptance Criteria |
-|---------|-------------|--------------|-------|---------------------|
-| S4-T1 | Design SARIF builder classes mapping PyReach results to OASIS schema | 6 | Alonso | Class diagram reviewed by Julio |
-| S4-T2 | Implement SARIF serialization with `codeFlows` for reachable paths | 10 | Alonso | Output validates against jsonschema SARIF v2.1.0 schema in tests |
-| S4-T3 | Implement CLI argument parsing, config loading, and execution orchestration | 8 | Alonso | All options from technical spec work; `--help` is comprehensive |
-| S4-T4 | Implement exit code logic and error handling hierarchy | 4 | Alonso | Exit codes 0/1/2 behave as specified; integration tests verify |
-| S4-T5 | Implement `.pyreach.yml` parser and merge with CLI overrides | 4 | Alonso | Config file values correctly overridden by CLI flags |
-| S4-T6 | Build CI/CD stage templates (GitLab CI job, Jenkins stage) | 6 | Alonso | Example `.gitlab-ci.yml` snippet runs pyreach and gates on exit code |
-| S4-T7 | Deploy to Lidercom local runner and validate performance (<45s) | 6 | Alonso | Scans Lidercom's largest microservice in <45 seconds |
-| S4-T8 | Write CLI user manual and architecture overview doc | 4 | Joint | Approved by Dr. Torres and Lidercom key users |
-
-### Definition of Done
-- CLI is installable via `pip install .` or `uv sync` and runs on Python 3.10+ without extra dependencies beyond those in `pyproject.toml`.
-- SARIF output is accepted by GitLab CI security dashboard (tested on Lidercom runner).
-- Scan completes in <45s on target microservice.
-- All integration tests pass; coverage >=80% overall.
-- Documentation complete and reviewed.
-
-### Risk Mitigations
-- **R3 (SARIF schema rejection)**: Automated jsonschema validation in TDD tests from day one of Sprint 4.
-- **R4 (Lidercom access delay)**: Containerized Docker replica of a generic Python microservice maintained as contingency test target.
+- **R7 (retraso por complejidad del AST)**: aún no aplica; se reserva holgura para el Sprint 2.
+- **R6 (sobrecarga académica)**: el Sprint 1 se programó antes de la semana de exámenes parciales (semana 8).
 
 ---
 
-## Sprint Dependencies & Critical Path
+## Sprint 2: Motor sintáctico AST y resolución de alias
+
+**Duración**: semanas 7-8
+**Esfuerzo**: 45 horas (Julio Centeno)
+**Estado**: ⬜ Pendiente
+**Objetivo**: Construir la base del análisis estático para la comprensión del código.
+
+### Entregables
+
+1. `pyreach.ast.builder`: convertir archivos `.py` en objetos `ModuleAST`.
+2. `pyreach.ast.symbols`: construcción de la tabla de símbolos por módulo.
+3. `pyreach.ast.resolver`: resolución de alias de importación entre la aplicación y `site-packages`.
+4. Módulos `pyreach.loaders.source` y `pyreach.loaders.packages`.
+5. Suite de pruebas exhaustiva de recorrido AST, tablas de símbolos y resolución de importaciones.
+
+### Tareas detalladas
+
+| ID | Descripción | Esfuerzo (h) | Responsable | Estado | Criterio de aceptación |
+|----|-------------|--------------|-------------|--------|------------------------|
+| S2-T1 | Mitigación M1: autoestudio intensivo del módulo `ast` (2 días) | 16 | Julio | ⬜ | Clasifica y recorre manualmente todos los tipos de nodo en archivos de muestra |
+| S2-T2 | Implementar `SourceLoader` con soporte de patrones de exclusión | 4 | Julio | ⬜ | Descubre todos los `.py` excluyendo `venv/`, `__pycache__/` |
+| S2-T3 | Implementar `PackageResolver`: nombre de paquete → ruta en `site-packages` | 6 | Julio | ⬜ | Resuelve el 100 % de los paquetes instalados en un venv de prueba |
+| S2-T4 | Implementar `ASTBuilder`: parseo, FQN del módulo y envoltura en `ModuleAST` | 8 | Julio | ⬜ | Parsea 50 archivos Python diversos sin errores de sintaxis; omite los inválidos con advertencia |
+| S2-T5 | Implementar `SymbolTableBuilder`: nombres locales, imports, `from ... import` | 10 | Julio | ⬜ | Resuelve `import numpy as np`, `from x import y as z`, `from . import sibling` |
+| S2-T6 | Implementar `ImportResolver`: alias entre módulos → nombres totalmente cualificados | 8 | Julio | ⬜ | Dado `import requests`, resuelve `requests.get` a `requests.api.get` |
+| S2-T7 | Escribir fixtures de pytest con código real (fragmentos de requests, flask) | 6 | Julio | ⬜ | Cobertura ≥80 % en `ast/` y `loaders/` |
+
+### Definición de terminado (DoD)
+
+- `ASTBuilder` y `SymbolTableBuilder` superan todas las pruebas sobre código real (requests, Flask, stubs de FastAPI).
+- La resolución de importaciones funciona para imports absolutos, relativos (intrapaquete) y comodín (`from module import *`).
+- `PackageResolver` mapea correctamente todos los paquetes de un entorno virtual `uv`.
+- Cobertura ≥80 % en el código nuevo.
+
+### Mitigaciones de riesgo
+
+- **R7 (complejidad del AST)**: mitigación M1 (autoestudio) adelantada en S2-T1. Si el retraso supera el 15 %, se recorta alcance: se desprioriza el soporte de `Pipfile.lock` o los paquetes de espacio de nombres complejos en `__init__.py`.
+- **R2 (constructos dinámicos)**: todavía no se aborda; se difiere al diseño heurístico del Sprint 3.
+
+---
+
+## Sprint 3: Construcción del grafo de llamadas (NetworkX) y algoritmo de alcanzabilidad
+
+**Duración**: semanas 9-10
+**Esfuerzo**: 45 horas (José Alonso Yáñez)
+**Estado**: ⬜ Pendiente
+**Objetivo**: Construir el grafo de llamadas interprocedimental e implementar el análisis acotado de alcanzabilidad.
+
+### Entregables
+
+1. `pyreach.callgraph.engine`: construcción del `DiGraph` de NetworkX a partir de los AST.
+2. Módulos `pyreach.callgraph.nodes` y `pyreach.callgraph.edges`.
+3. `pyreach.reachability.analyzer`: recorrido BFS/DFS acotado.
+4. `pyreach.reachability.classifier`: lógica de clasificación de resultados.
+5. `pyreach.reachability.entrypoints`: detección y configuración de puntos de entrada.
+6. Pruebas de integración de extremo a extremo sobre proyectos sintéticos vulnerables.
+
+### Tareas detalladas
+
+| ID | Descripción | Esfuerzo (h) | Responsable | Estado | Criterio de aceptación |
+|----|-------------|--------------|-------------|--------|------------------------|
+| S3-T1 | Mitigación M3: estudio de las APIs de `DiGraph` de NetworkX y de los algoritmos de PyCG | 8 | Alonso | ⬜ | Construye, recorre y serializa `DiGraph`; domina los tipos de nodo/arista de PyCG |
+| S3-T2 | Diseñar las dataclasses `CGNode` y `CGEdge` con anotaciones de tipo | 4 | Alonso | ⬜ | Revisadas por Julio; documentadas e inmutables |
+| S3-T3 | Implementar la extracción de nodos: funciones, métodos, lambdas, clases | 10 | Alonso | ⬜ | Extrae ≥95 % de los nodos invocables en código Python estándar |
+| S3-T4 | Implementar la extracción de aristas: llamadas estáticas, herencia e imports | 12 | Alonso | ⬜ | Enlaza correctamente `caller()` → `callee()` en llamadas directas y de método |
+| S3-T5 | Implementar el BFS acotado de alcanzabilidad (profundidad máxima k=5) con memoización | 12 | Alonso | ⬜ | Completa un grafo de 100 nodos en <100 ms; maneja ciclos sin fallar |
+| S3-T6 | Implementar el clasificador: REACHABLE / NOT_REACHABLE / POTENTIALLY_REACHABLE | 6 | Alonso | ⬜ | Pruebas unitarias de las tres categorías; 0 falsos negativos en la suite |
+| S3-T7 | Implementar la detección automática de puntos de entrada (`__main__`, configuración CLI) | 4 | Alonso | ⬜ | Detecta `if __name__ == "__main__"` y respeta las anulaciones con `-e` |
+| S3-T8 | Prueba de integración: proyecto sintético con CVE alcanzables e inalcanzables conocidos | 6 | Alonso | ⬜ | Supera 5 escenarios sintéticos con 100 % de exactitud |
+
+### Definición de terminado (DoD)
+
+- El grafo de llamadas se construye correctamente para un proyecto mediano (p. ej. una app Flask con 10 dependencias) en <10 segundos.
+- El analizador de alcanzabilidad clasifica correctamente todos los CVE de prueba sintéticos.
+- La heurística POTENTIALLY_REACHABLE está implementada para los patrones `eval`, `exec`, `getattr`, `importlib`.
+- Cobertura ≥80 % en `callgraph/` y `reachability/`.
+
+### Mitigaciones de riesgo
+
+- **R1 (explosión combinatoria)**: limitar la profundidad máxima a k=5. Usar `DiGraph` (no `MultiDiGraph`) para colapsar aristas paralelas. Monitorear memoria con `tracemalloc` en las pruebas.
+- **R2 (metaprogramación dinámica)**: heurística preventiva: toda cadena de llamadas que atraviese una arista `DYNAMIC` o un import sin resolver se marca como POTENTIALLY_REACHABLE.
+
+---
+
+## Sprint 4: Serializador SARIF, CLI y compuertas de calidad en CI/CD
+
+**Duración**: semanas 11-12
+**Esfuerzo**: 42 horas (José Alonso Yáñez)
+**Estado**: ⬜ Pendiente
+**Objetivo**: Entregar la herramienta de usuario final con salida estandarizada e integración en el pipeline.
+
+### Entregables
+
+1. `pyreach.output.sarif`: serialización validada contra SARIF v2.1.0.
+2. `pyreach.cli`: CLI completa con todas las opciones especificadas y códigos de salida.
+3. `pyreach.config`: cargador y validación de `.pyreach.yml`.
+4. Scripts y documentación de integración en CI/CD.
+5. Paquete de despliegue en el runner local de Lidercom.
+6. Manual de usuario de la CLI (Markdown).
+
+### Tareas detalladas
+
+| ID | Descripción | Esfuerzo (h) | Responsable | Estado | Criterio de aceptación |
+|----|-------------|--------------|-------------|--------|------------------------|
+| S4-T1 | Diseñar las clases constructoras de SARIF que mapean los resultados de PyReach al esquema OASIS | 6 | Alonso | ⬜ | Diagrama de clases revisado por Julio |
+| S4-T2 | Implementar la serialización SARIF con `codeFlows` para las rutas alcanzables | 10 | Alonso | ⬜ | La salida valida contra el esquema SARIF v2.1.0 con `jsonschema` en las pruebas |
+| S4-T3 | Implementar el parseo de argumentos, la carga de configuración y la orquestación de la CLI | 8 | Alonso | ⬜ | Todas las opciones de la especificación funcionan; `--help` es completo |
+| S4-T4 | Implementar la lógica de códigos de salida y la jerarquía de errores | 4 | Alonso | ⬜ | Los códigos 0/1/2 se comportan según lo especificado; pruebas de integración lo verifican |
+| S4-T5 | Implementar el parser de `.pyreach.yml` y su fusión con las anulaciones de la CLI | 4 | Alonso | ⬜ | Los valores del archivo de configuración se anulan correctamente con los flags de la CLI |
+| S4-T6 | Construir plantillas de etapas de CI/CD (job de GitLab CI, stage de Jenkins) | 6 | Alonso | ⬜ | Un fragmento de `.gitlab-ci.yml` ejecuta pyreach y bloquea según el código de salida |
+| S4-T7 | Desplegar en el runner local de Lidercom y validar el rendimiento (<45 s) | 6 | Alonso | ⬜ | Escanea el microservicio más grande de Lidercom en <45 segundos |
+| S4-T8 | Redactar el manual de la CLI y el documento de arquitectura | 4 | Conjunto | ⬜ | Aprobado por el Dr. Torres y los usuarios clave de Lidercom |
+
+### Definición de terminado (DoD)
+
+- La CLI es instalable mediante `pip install .` o `uv sync` y corre en Python 3.10+ sin dependencias adicionales a las de `pyproject.toml`.
+- La salida SARIF es aceptada por el panel de seguridad de GitLab CI (probada en el runner de Lidercom).
+- El escaneo se completa en <45 s sobre el microservicio objetivo.
+- Todas las pruebas de integración pasan; cobertura global ≥80 %.
+- Documentación completa y revisada.
+
+### Mitigaciones de riesgo
+
+- **R3 (rechazo del esquema SARIF)**: validación automática con `jsonschema` en las pruebas de TDD desde el primer día del Sprint 4.
+- **R4 (retraso en el acceso a Lidercom)**: se mantiene una réplica en contenedor Docker de un microservicio Python genérico como objetivo de prueba de contingencia.
+
+---
+
+## Dependencias entre sprints y ruta crítica
 
 ```
 Sprint 1 (Parser/OSV) ----+
-                          +--> Sprint 3 (Call Graph/Reachability) --> Sprint 4 (SARIF/CLI)
-Sprint 2 (AST Engine) ----+
+                          +--> Sprint 3 (Grafo de llamadas/Alcanzabilidad) --> Sprint 4 (SARIF/CLI)
+Sprint 2 (Motor AST) -----+
 ```
 
-**Critical Path**: S1 -> S3 -> S4 (total 10 weeks).  
-**Float**: S2 has some flexibility but must complete before S3 starts.
+**Ruta crítica**: S1 → S3 → S4 (10 semanas en total).
+**Holgura**: el Sprint 2 tiene cierta flexibilidad, pero debe terminar antes de que arranque el Sprint 3.
 
-## Milestones & Checkpoints
+## Hitos y puntos de control
 
-| Milestone | Date (Week) | Criteria |
-|-----------|-------------|----------|
-| M1: Data Foundation | End of Week 6 | OSV DB ingestible; manifests parseable; CI green |
-| M2: Code Comprehension | End of Week 8 | AST engine resolves imports and symbols on real code |
-| M3: Analysis Core | End of Week 10 | Call graph + reachability yields correct classifications on synthetic projects |
-| M4: Product Delivery | End of Week 12 | CLI installable; SARIF valid; CI gate functional; <45s scan |
+| Hito | Fecha (semana) | Estado | Criterio |
+|------|----------------|--------|----------|
+| M1: Cimientos de datos | Fin de la semana 6 | 🟡 En curso | Base OSV ingerible; manifiestos parseables; CI en verde |
+| M2: Comprensión del código | Fin de la semana 8 | ⬜ Pendiente | El motor AST resuelve imports y símbolos sobre código real |
+| M3: Núcleo de análisis | Fin de la semana 10 | ⬜ Pendiente | El grafo de llamadas y la alcanzabilidad producen clasificaciones correctas en proyectos sintéticos |
+| M4: Entrega del producto | Fin de la semana 12 | ⬜ Pendiente | CLI instalable; SARIF válido; compuerta de CI funcional; escaneo <45 s |
 
-## Buffer & Contingency
+## Holgura y contingencia
 
-- **Schedule buffer**: 3 days per sprint (approx 15% of biweekly capacity) reserved for rework, bug fixes, and advisor review.
-- **Scope negotiation triggers**:
-  - If Sprint 1 slips >3 days: Drop `Pipfile.lock` support; focus only on `requirements.txt`.
-  - If Sprint 2 slips >3 days: Reduce import resolution complexity; skip star-import resolution (`from x import *`).
-  - If Sprint 3 slips >3 days: Reduce max depth default from 5 to 3; postpone memoization optimization.
-  - If Sprint 4 slips >3 days: Postpone `.pyreach.yml` config file; rely on CLI flags only.
+- **Holgura de cronograma**: 3 días por sprint (≈15 % de la capacidad bisemanal) reservados para retrabajo, corrección de bugs y revisión del asesor.
+- **Disparadores de negociación de alcance**:
+  - Si el Sprint 1 se retrasa >3 días: eliminar el soporte de `Pipfile.lock`; enfocarse solo en `requirements.txt`.
+  - Si el Sprint 2 se retrasa >3 días: reducir la complejidad de la resolución de imports; omitir la resolución de imports comodín (`from x import *`).
+  - Si el Sprint 3 se retrasa >3 días: bajar la profundidad máxima por defecto de 5 a 3; posponer la optimización por memoización.
+  - Si el Sprint 4 se retrasa >3 días: posponer el archivo de configuración `.pyreach.yml`; depender solo de los flags de la CLI.
 
 ---
 
-*Document version: 1.0*
-*Date: 2026-09-10*
-*Status: Draft for Phase 2 Implementation*
+## Próximos pasos inmediatos
+
+| Orden | Tarea | Motivo |
+|-------|-------|--------|
+| 1 | **S1-T2** — Parser de `requirements.txt` | Es el siguiente eslabón de la ruta crítica (`S1-T2 → S1-T4 → S1-T5`) y habilita la ingesta de dependencias |
+| 2 | **S1-T4** — Esquema SQLite | Bloquea la implementación de la ingesta OSV (S1-T5) y del patrón repositorio |
+| 3 | **S1-T5** — `OSVImporter` | Cierra el hito M1 (cimientos de datos) junto con el parseo de manifiestos |
+| 4 | **S1-T6** — Cerrar cobertura de pruebas de los parsers | Ya iniciado (`test_manifest_contract.py`); debe llegar a ≥80 % |
+| 5 | **S1-T7** — Etapa de pytest en GitLab CI | Sin esta etapa no hay control de calidad automático sobre los siguientes sprints |
+
+> **Recordatorio de TDD**: cada tarea de implementación se precede de su prueba en rojo. Las
+> pruebas deben ser deterministas y no depender del volcado completo de OSV ni de servicios externos.
+
+## Backlog de deuda técnica y pendientes
+
+Los siguientes hallazgos se detectaron durante la revisión de seguimiento del **2026-09-25**. Se
+registran aquí como **ítems accionables e independientes de los sprints**, de modo que puedan
+resolverse más adelante sin reabrir el plan de desarrollo. Al cerrar un ítem: actualizar su columna
+**Estado** en la tabla resumen, cambiar el **Estado** del bloque de detalle, anotarlo en el
+*Registro de cierre del backlog* y reflejarlo en la bitácora.
+
+> **Ninguno de estos ítems bloquea el Sprint 1.** DT-01 debe resolverse antes del Sprint 4
+> (empaquetado y despliegue) y DT-04 al cierre del Sprint 4.
+
+**Estados**: ⬜ Pendiente · 🟡 En curso · ✅ Resuelto · ❌ Descartado (indicar justificación)
+
+### Resumen del backlog
+
+| ID | Hallazgo | Ubicación | Sprint sugerido | Esfuerzo | Prioridad | Estado |
+|----|----------|-----------|-----------------|----------|-----------|--------|
+| [DT-01](#dt-01--habilitar-el-empaquetado-del-paquete-pyreach) | `[tool.uv] package = false` y ausencia de `[build-system]`, pese a que el paquete `pyreach/` ya existe con módulos reales | `pyproject.toml` | Sprint 4 (empaquetado) | 1 h | Media | ⬜ |
+| [DT-02](#dt-02--actualizar-el-layout-del-repositorio-en-agentsmd) | El layout documentado marca `pyreach/` como "(NOT YET CREATED)" | `AGENTS.md` §4 | Inmediato | 0,5 h | Baja | ⬜ |
+| [DT-03](#dt-03--actualizar-la-referencia-de-versión-del-roadmap) | La referencia de versión del roadmap quedó fijada en v1.0 (2026-09-10) | `implementation/README.md` (*Document Control*) | Inmediato | 0,5 h | Baja | ⬜ |
+| [DT-04](#dt-04--definir-el-uso-o-retiro-de-analysiserror-y-outputerror) | Los exception handlers `AnalysisError` y `OutputError` están declarados pero aún sin uso | `pyreach/exceptions.py` | Cierre del Sprint 4 | 0,5 h | Baja | ⬜ |
+| [DT-05](#dt-05--conciliar-el-total-de-horas-persona-de-la-fase-2) | El encabezado declara 240 h-persona para la Fase 2, pero la suma de las estimaciones por sprint es de 176 h (44+45+45+42) | Este documento | Inmediato | 1 h | Alta | ⬜ |
+
+### DT-01 — Habilitar el empaquetado del paquete `pyreach`
+
+- **Estado**: ⬜ Pendiente · **Prioridad**: Media · **Esfuerzo**: 1 h
+- **Ubicación**: `pyproject.toml`
+- **Hallazgo**: el paquete `pyreach/` ya existe con módulos reales (`__init__.py`, `exceptions.py`,
+  `parsers/`), pero la configuración conserva `[tool.uv] package = false` y no declara
+  `[build-system]`, por lo que `uv build` y la instalación del paquete no están habilitados.
+- **Pasos de resolución**:
+  1. Añadir el bloque de construcción, por ejemplo:
+
+     ```toml
+     [build-system]
+     requires = ["hatchling"]
+     build-backend = "hatchling.build"
+     ```
+
+  2. Cambiar `[tool.uv] package = false` a `true` (o eliminar la sección, ya que `[build-system]`
+     habilita el empaquetado por defecto).
+  3. Re-sincronizar el lockfile con `uv lock`.
+  4. Confirmar que las pruebas siguen importando `pyreach` correctamente (la configuración
+     `pythonpath = ["."]` de `[tool.pytest.ini_options]` debe mantenerse).
+- **Verificación**:
+
+  ```bash
+  uv lock && uv sync --locked
+  uv build
+  uv run python -c "import pyreach; print(pyreach.__version__)"
+  uv run pytest -q
+  ```
+
+- **Criterio de cierre**: `uv build` genera `wheel` y `sdist` sin errores; las 5 pruebas actuales
+  siguen en verde; el cambio queda alineado con el uso de `uv sync --locked` previsto en CI (S1-T7).
+- **Decisión previa requerida**: confirmar con el asesor que el empaquetado distribuible entra en el
+  alcance de la Fase 2 (se relaciona con S4-T7 y con el entregable de instalación de la CLI).
+
+### DT-02 — Actualizar el layout del repositorio en `AGENTS.md`
+
+- **Estado**: ⬜ Pendiente · **Prioridad**: Baja · **Esfuerzo**: 0,5 h
+- **Ubicación**: `AGENTS.md` §4 (*Repository Layout*)
+- **Hallazgo**: el árbol documentado etiqueta `pyreach/` como `<- (NOT YET CREATED)`, pero el paquete
+  ya existe. Alguien que siga la guía puede creer que debe arrancar el paquete desde cero.
+- **Pasos de resolución**:
+  1. Eliminar la etiqueta `(NOT YET CREATED)`.
+  2. Señalar el estado real: existen `__init__.py`, `exceptions.py` y `parsers/`;
+     el resto del árbol sigue siendo el objetivo a construir.
+  3. Verificar que siguen coincidiendo `AGENTS.md` §4, `03-technical-specifications.md` §2 y el árbol real.
+- **Verificación**:
+
+  ```bash
+  ls -R pyreach/
+  grep -n "NOT YET CREATED" AGENTS.md   # no debe devolver resultados
+  ```
+
+- **Criterio de cierre**: el layout documentado refleja el árbol real del paquete y no quedan
+  marcadores de "no creado".
+
+### DT-03 — Actualizar la referencia de versión del roadmap
+
+- **Estado**: ⬜ Pendiente · **Prioridad**: Baja · **Esfuerzo**: 0,5 h
+- **Ubicación**: `implementation/README.md`, sección *Document Control*
+- **Hallazgo**: la nota indica "Derived from `04-implementation-roadmap.md` v1.0 (2026-09-10)",
+  mientras el roadmap ya va por la v1.2 con estado de avance y backlog incorporados.
+- **Pasos de resolución**:
+  1. Actualizar la versión y la fecha de derivación al roadmap vigente (v1.2, 2026-09-25).
+  2. Si el backlog DT-01…DT-05 se traslada también a `implementation/`, añadir la referencia cruzada.
+- **Verificación**: `grep -n "Derived from" implementation/README.md` y contrastar con el pie de página del roadmap.
+- **Criterio de cierre**: ambas cabeceras de control documental declaran la misma versión de origen.
+
+### DT-04 — Definir el uso o retiro de `AnalysisError` y `OutputError`
+
+- **Estado**: ⬜ Pendiente · **Prioridad**: Baja · **Esfuerzo**: 0,5 h
+- **Ubicación**: `pyreach/exceptions.py`
+- **Hallazgo**: ambos handlers están declarados con la nota "reserved for later sprints" pero aún no
+  se lanzan en ninguna parte del código.
+- **Pasos de resolución** (elegir una opción y registrarla aquí):
+  1. **Opción A — Usarlos**: asegurar que `AnalysisError` se lance en los fallos del motor AST/grafo
+     (Sprint 3) y `OutputError` en los fallos de serialización SARIF (Sprint 4), según el
+     §*Error hierarchy* de la especificación técnica.
+  2. **Opción B — Retirarlos**: si al cierre del Sprint 4 no se usan, eliminarlos para no dejar
+     código muerto y ajustar su documentación.
+- **Verificación**:
+
+  ```bash
+  grep -rn "AnalysisError\|OutputError" pyreach/ tests/
+  uv run mypy pyreach
+  ```
+
+- **Criterio de cierre**: cada excepción declarada tiene al menos un punto de lanzamiento cubierto
+  por una prueba, o bien ha sido retirada con justificación.
+
+### DT-05 — Conciliar el total de horas-persona de la Fase 2
+
+- **Estado**: ⬜ Pendiente · **Prioridad**: Alta · **Esfuerzo**: 1 h
+- **Ubicación**: sección *Plan de desarrollo de la Fase 2* de este documento
+- **Hallazgo**: el encabezado declara **240 h-persona** para la Fase 2, pero las estimaciones por
+  sprint suman **176 h** (44 + 45 + 45 + 42). La diferencia de **64 h** no está explicada y puede
+  ser cuestionada en la defensa del proyecto, dado que la cifra de 240 h se sustenta en la línea
+  base temporal declarada en las prácticas de la Fase 1.
+- **Pasos de resolución**:
+  1. Determinar el origen de las 64 h restantes (holgura por sprint, documentación de entregables,
+     validación experimental del benchmark, reuniones de asesoría, defensa).
+  2. Declarar el desglose explícitamente en esta sección (tabla de asignación de horas).
+  3. Contrastar la cifra con lo ya documentado en las prácticas de la Fase 1
+     (curva S: avance sobre 480 h-persona) y confirmar que las sumas coinciden.
+- **Verificación**: la suma de las partes debe igualar el total declarado, y el total debe coincidir
+  con la cifra reportada en la documentación de las prácticas de la Fase 1.
+- **Criterio de cierre**: total y desglose reconciliados y trazados contra la línea base de la Fase 1.
+
+## Bitácora de avance
+
+| Fecha | Versión | Cambio |
+|-------|---------|--------|
+| 2026-09-10 | 1.0 | Emisión inicial del plan de la Fase 2 (borrador para implementación) |
+| 2026-09-25 | 1.1 | Revisión de seguimiento: documento traducido al español, incorporación del estado de avance por tarea (S1-T0 y S1-T1 completados y verificados con 5 pruebas en verde), sección de próximos pasos, deuda técnica detectada y bitácora |
+| 2026-09-25 | 1.2 | Formalización del backlog de deuda técnica: los 5 hallazgos pasan a ítems accionables (DT-01 a DT-05) con prioridad, esfuerzo, sprint sugerido, pasos de resolución, comandos de verificación y criterio de cierre, listos para resolverse de forma independiente |
+
+### Registro de cierre del backlog
+
+Anotar aquí cada ítem al resolverlo, y reflejarlo también en la bitácora.
+
+| ID | Fecha de cierre | Resolución aplicada |
+|----|-----------------|---------------------|
+| DT-01 | — | — |
+| DT-02 | — | — |
+| DT-03 | — | — |
+| DT-04 | — | — |
+| DT-05 | — | — |
+
+---
+
+*Versión del documento: 1.2*
+*Fecha: 2026-09-25*
+*Estado: En ejecución — Sprint 1 (Parser de dependencias, ingesta OSV y fixtures TDD)*

@@ -43,3 +43,6 @@ coverage.json
 .vscode/
 .DS_Store
 Thumbs.db
+
+# graphify
+graphify-out/

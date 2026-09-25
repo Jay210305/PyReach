@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "fulbo-laya": {
+      "command": "node",
+      "args": [
+        ".opencode/mcp/laya-mcp.mjs"
+      ]
+    },
+    "fulbo-postgres": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "%FULBO_MCP_DATABASE_URL%"
+      ],
+      "disabled": true
+    },
+    "fulbo-git": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "."
+      ],
+      "cwd": "."
+    },
+    "fulbo-fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    },
+    "fulbo-docker": {
+      "command": "docker",
+      "args": [
+        "mcp",
+        "gateway",
+        "run",
+        "--profile",
+        "fulbo"
+      ],
+      "disabled": true
+    }
+  }
+}

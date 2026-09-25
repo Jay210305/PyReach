@@ -145,7 +145,7 @@ uv run ruff check pyreach/parsers/manifest.py
 
 ## Definition of Done
 
-- [ ] `RequirementsTxtParser` merged; 20+ tests green.
-- [ ] Coverage >=90% on `parsers/manifest.py`.
-- [ ] `ruff`/`mypy` clean.
-- [ ] No dynamic execution anywhere in the parser.
+- [x] `RequirementsTxtParser` merged; 20+ tests green.
+- [x] Coverage >=90% on `parsers/manifest.py`.
+- [x] `ruff`/`mypy` clean.
+- [x] No dynamic execution anywhere in the parser.

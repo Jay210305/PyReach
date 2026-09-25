@@ -1,0 +1,6 @@
+{
+    "_meta": {
+        "hash": {"sha256": "abcdef"}
+    },
+    "default": "not-a-dict",
+    "develop": {

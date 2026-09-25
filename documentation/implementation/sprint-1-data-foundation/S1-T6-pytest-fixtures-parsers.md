@@ -141,7 +141,8 @@ uv run pytest tests/unit/parsers -q -n auto
 
 ## Definition of Done
 
-- [ ] Shared fixtures merged and documented.
-- [ ] Parametrized suites cover roadmap edge cases.
-- [ ] Coverage thresholds met and reproducible locally.
-- [ ] `pyproject.toml` pytest config committed.
+- [x] Shared fixtures merged and documented.
+- [x] Parametrized suites cover roadmap edge cases.
+- [x] Coverage thresholds met and reproducible locally.
+- [x] `pyproject.toml` pytest config committed.
+

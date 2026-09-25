@@ -159,7 +159,8 @@ python -c "from pyreach.osv.importer import OSVImporter; print(OSVImporter('C:/t
 
 ## Definition of Done
 
-- [ ] Importer + repo merged; 9+ tests green.
-- [ ] Idempotency and incremental sync verified.
-- [ ] 10k-record benchmark documented.
-- [ ] `sync_osv` callable exposed for the CLI.
+- [x] Importer + repo merged; 9+ tests green.
+- [x] Idempotency and incremental sync verified.
+- [x] 10k-record benchmark documented.
+- [x] `sync_osv` callable exposed for the CLI.
+

@@ -120,7 +120,7 @@ uv run pytest tests/unit/parsers --cov=pyreach.parsers --cov-report=term-missing
 
 ## Definition of Done
 
-- [ ] Parser merged with 10+ tests green.
-- [ ] `select_manifest_parser` consumed by CLI in a later sprint (leave TODO-free note in docs).
-- [ ] Coverage >=90% on Pipfile paths.
-- [ ] Documented as the designated scope-cut candidate.
+- [x] Parser merged with 10+ tests green.
+- [x] `select_manifest_parser` consumed by CLI in a later sprint (leave TODO-free note in docs).
+- [x] Coverage >=90% on Pipfile paths.
+- [x] Documented as the designated scope-cut candidate.

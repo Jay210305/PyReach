@@ -1,0 +1,44 @@
+stages:
+  - lint
+  - test
+
+variables:
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+
+default:
+  image: python:3.10-slim
+
+cache:
+  key:
+    files:
+      - uv.lock
+  paths:
+    - .cache/uv
+
+lint:
+  stage: lint
+  before_script:
+    - pip install uv
+    - uv sync --locked
+  script:
+    - uv run ruff check pyreach tests
+    - uv run ruff format --check pyreach tests
+    - uv run mypy pyreach
+  allow_failure: false
+
+test:
+  stage: test
+  before_script:
+    - pip install uv
+    - uv sync --locked
+  script:
+    - uv run pytest -m "not performance" --cov=pyreach --cov-report=xml --cov-report=term --cov-fail-under=80
+  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
+  artifacts:
+    when: always
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.xml

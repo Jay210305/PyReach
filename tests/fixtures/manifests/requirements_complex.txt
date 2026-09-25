@@ -1,0 +1,9 @@
+# Comments and section headers
+--index-url https://pypi.org/simple
+
+requests[security,socks]==2.31.0; python_version >= '3.10'
+flask[async]>=2.2.0 \
+    --hash=sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+-e ./local_pkg
+click==8.1.3; sys_platform == 'linux'
+./dist/wheel_pkg-1.0.0-py3-none-any.whl

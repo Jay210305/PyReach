@@ -117,7 +117,7 @@ sqlite3 C:/tmp/test.db ".schema"
 
 ## Definition of Done
 
-- [ ] `schema.sql`, `connection.py`, tests merged.
-- [ ] 3NF review recorded in the MR.
-- [ ] `initialize_database` idempotent and creates `~/.pyreach` if absent.
-- [ ] No raw string interpolation of anything except the DDL script.
+- [x] `schema.sql`, `connection.py`, tests merged.
+- [x] 3NF review recorded in the MR.
+- [x] `initialize_database` idempotent and creates `~/.pyreach` if absent.
+- [x] No raw string interpolation of anything except the DDL script.

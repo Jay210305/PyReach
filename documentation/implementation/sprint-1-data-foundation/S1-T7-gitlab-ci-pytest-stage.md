@@ -127,8 +127,9 @@ Keep `allow_failure: false` so lint errors block merge (`10-risk-and-contingency
 
 ## Definition of Done
 
-- [ ] `.gitlab-ci.yml` merged and green.
-- [ ] `uv.lock` committed and CI uses `--locked`.
-- [ ] Merge is blocked on failing tests.
-- [ ] Coverage artifact present.
-- [ ] Pipeline link recorded in the sprint review notes.
+- [x] `.gitlab-ci.yml` merged and green.
+- [x] `uv.lock` committed and CI uses `--locked`.
+- [x] Merge is blocked on failing tests.
+- [x] Coverage artifact present.
+- [x] Pipeline link recorded in the sprint review notes.
+

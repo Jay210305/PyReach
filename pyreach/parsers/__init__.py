@@ -6,14 +6,20 @@ from pyreach.parsers.manifest import (
     Dependency,
     ManifestParser,
     ParserResult,
+    PipfileLockParser,
+    RequirementsTxtParser,
     normalize_name,
+    select_manifest_parser,
 )
 
 __all__ = [
     "Dependency",
     "ManifestParser",
     "ParserResult",
+    "PipfileLockParser",
+    "RequirementsTxtParser",
     "SOURCE_PIPFILE_LOCK",
     "SOURCE_REQUIREMENTS_TXT",
     "normalize_name",
+    "select_manifest_parser",
 ]
