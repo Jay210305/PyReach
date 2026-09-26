@@ -154,7 +154,7 @@ uv run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
 
 ## Definition of Done
 
-- [ ] Symbol builder + tests merged.
-- [ ] `ModuleAST.symbol_table` populated by `ASTBuilder` pipeline.
-- [ ] Star imports handled or explicitly downgraded.
-- [ ] Coverage >=85% on `ast/`.
+- [x] Symbol builder + tests merged.
+- [x] `ModuleAST.symbol_table` populated by `ASTBuilder` pipeline.
+- [x] Star imports handled or explicitly downgraded.
+- [x] Coverage >=85% on `ast/`.

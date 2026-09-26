@@ -20,10 +20,10 @@ es negociable**).
 |-----------|-------|
 | Última actualización | 2026-09-25 |
 | Fase activa | Fase 2 — Desarrollo (semanas 5-12) |
-| Sprint activo | **Sprint 2 — Motor sintáctico AST y resolución de alias (semanas 7-8), en curso (2/7 tareas)** |
-| Tareas completadas | 10 / 31 (Sprint 1: 8/8 ✅, Sprint 2: 2/7 🟡) |
-| Avance del Sprint 2 | 2 / 7 tareas (28.6 %) — `S2-T1` ✅, `S2-T2` ✅ |
-| Estado de la build | `uv run pytest` → **108 tests aprobados** (cobertura global: 95 %, loaders: 92 %) |
+| Sprint activo | **Sprint 2 — Motor sintáctico AST y resolución de alias (semanas 7-8), en curso (4/7 tareas)** |
+| Tareas completadas | 12 / 31 (Sprint 1: 8/8 ✅, Sprint 2: 4/7 🟡) |
+| Avance del Sprint 2 | 4 / 7 tareas (57.1 %) — `S2-T1` ✅, `S2-T2` ✅, `S2-T3` ✅, `S2-T4` ✅ |
+| Estado de la build | `uv run pytest` → **138 tests aprobados**, 1 skipped (cobertura global: 94 %, ast: 96 %, loaders: 88 %) |
 | Intérprete del `.venv` | CPython 3.14 (requisito declarado: `>=3.10`) |
 
 **Leyenda de estados**: ✅ Completado · 🟡 En curso · ⬜ Pendiente · ⏸️ Bloqueado
@@ -97,10 +97,10 @@ es negociable**).
 
 ### Entregables
 
-1. `pyreach.ast.builder`: convertir archivos `.py` en objetos `ModuleAST`.
+1. `pyreach.ast.builder`: convertir archivos `.py` en objetos `ModuleAST`. ✅
 2. `pyreach.ast.symbols`: construcción de la tabla de símbolos por módulo.
 3. `pyreach.ast.resolver`: resolución de alias de importación entre la aplicación y `site-packages`.
-4. Módulos `pyreach.loaders.source` y `pyreach.loaders.packages`. ✅ (`source.py` implementado)
+4. Módulos `pyreach.loaders.source` y `pyreach.loaders.packages`. ✅ (`source.py` y `packages.py` implementados)
 5. Suite de pruebas exhaustiva de recorrido AST, tablas de símbolos y resolución de importaciones.
 
 ### Tareas detalladas
@@ -109,9 +109,9 @@ es negociable**).
 |----|-------------|--------------|-------------|--------|------------------------|
 | S2-T1 | Mitigación M1: autoestudio intensivo del módulo `ast` (2 días) | 16 | Julio | ✅ | Clasifica y recorre manualmente todos los tipos de nodo en archivos de muestra |
 | S2-T2 | Implementar `SourceLoader` con soporte de patrones de exclusión | 4 | Julio | ✅ | Descubre todos los `.py` excluyendo `venv/`, `__pycache__/` |
-| S2-T3 | Implementar `PackageResolver`: nombre de paquete → ruta en `site-packages` | 6 | Julio | ⬜ | Resuelve el 100 % de los paquetes instalados en un venv de prueba |
-| S2-T4 | Implementar `ASTBuilder`: parseo, FQN del módulo y envoltura en `ModuleAST` | 8 | Julio | ⬜ | Parsea 50 archivos Python diversos sin errores de sintaxis; omite los inválidos con advertencia |
-| S2-T5 | Implementar `SymbolTableBuilder`: nombres locales, imports, `from ... import` | 10 | Julio | ⬜ | Resuelve `import numpy as np`, `from x import y as z`, `from . import sibling` |
+| S2-T3 | Implementar `PackageResolver`: nombre de paquete → ruta en `site-packages` | 6 | Julio | ✅ | Resuelve el 100 % de los paquetes instalados en un venv de prueba |
+| S2-T4 | Implementar `ASTBuilder`: parseo, FQN del módulo y envoltura en `ModuleAST` | 8 | Julio | ✅ | Parsea 50 archivos Python diversos sin errores de sintaxis; omite los inválidos con advertencia |
+| S2-T5 | Implementar `SymbolTableBuilder`: nombres locales, imports, `from ... import` | 10 | Julio | ✅ | Resuelve `import numpy as np`, `from x import y as z`, `from . import sibling` |
 | S2-T6 | Implementar `ImportResolver`: alias entre módulos → nombres totalmente cualificados | 8 | Julio | ⬜ | Dado `import requests`, resuelve `requests.get` a `requests.api.get` |
 | S2-T7 | Escribir fixtures de pytest con código real (fragmentos de requests, flask) | 6 | Julio | ⬜ | Cobertura ≥80 % en `ast/` y `loaders/` |
 

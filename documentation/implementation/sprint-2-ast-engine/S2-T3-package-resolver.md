@@ -118,7 +118,8 @@ uv run python -c "from pyreach.loaders.packages import PackageResolver; r=Packag
 
 ## Definition of Done
 
-- [ ] Resolver + tests merged.
-- [ ] Tested against a real uv virtual environment (networkx, jsonschema).
-- [ ] Graceful degradation verified.
-- [ ] Coverage >=85% on `loaders/`.
+- [x] Resolver + tests merged.
+- [x] Tested against a real uv virtual environment (networkx, jsonschema).
+- [x] Graceful degradation verified.
+- [x] Coverage >=85% on `loaders/` (86% on packages.py, 92% on source.py, 88% loaders average).
+

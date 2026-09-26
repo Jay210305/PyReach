@@ -145,7 +145,8 @@ uv run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
 
 ## Definition of Done
 
-- [ ] Builder + tests merged.
-- [ ] 50-file parse test green.
-- [ ] FQN examples documented and tested.
-- [ ] Invalid files skipped with warnings, scan continues.
+- [x] Builder + tests merged.
+- [x] 50-file parse test green.
+- [x] FQN examples documented and tested.
+- [x] Invalid files skipped with warnings, scan continues.
+
