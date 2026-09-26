@@ -116,7 +116,8 @@ Create `documentation/study/ast-notes.md` (internal, not user-facing) containing
 
 ## Definition of Done
 
-- [ ] Notes committed and reviewed by Alonso.
-- [ ] FQN algorithm validated on 10+ files.
-- [ ] Gotchas list referenced by S2-T4/T5/T6 PRs.
-- [ ] Confidence checklist signed off before S2-T4 starts.
+- [x] Notes committed and reviewed by Alonso.
+- [x] FQN algorithm validated on 10+ files.
+- [x] Gotchas list referenced by S2-T4/T5/T6 PRs.
+- [x] Confidence checklist signed off before S2-T4 starts.
+

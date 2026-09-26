@@ -20,10 +20,10 @@ es negociable**).
 |-----------|-------|
 | Última actualización | 2026-09-25 |
 | Fase activa | Fase 2 — Desarrollo (semanas 5-12) |
-| Sprint activo | **Sprint 1 completado (8/8) — Preparado para Sprint 2: Motor sintáctico AST y resolución de alias (semanas 7-8)** |
-| Tareas completadas | 8 / 31 (100 % Sprint 1, Hito M1 Fundación de Datos alcanzado) |
-| Avance del Sprint 1 | 8 / 8 tareas (100 %) |
-| Estado de la build | `uv run pytest` → **89 tests aprobados** (cobertura global: 96 %, parsers: 97 %, osv: 96 %) |
+| Sprint activo | **Sprint 2 — Motor sintáctico AST y resolución de alias (semanas 7-8), en curso (2/7 tareas)** |
+| Tareas completadas | 10 / 31 (Sprint 1: 8/8 ✅, Sprint 2: 2/7 🟡) |
+| Avance del Sprint 2 | 2 / 7 tareas (28.6 %) — `S2-T1` ✅, `S2-T2` ✅ |
+| Estado de la build | `uv run pytest` → **108 tests aprobados** (cobertura global: 95 %, loaders: 92 %) |
 | Intérprete del `.venv` | CPython 3.14 (requisito declarado: `>=3.10`) |
 
 **Leyenda de estados**: ✅ Completado · 🟡 En curso · ⬜ Pendiente · ⏸️ Bloqueado
@@ -92,7 +92,7 @@ es negociable**).
 
 **Duración**: semanas 7-8
 **Esfuerzo**: 45 horas (Julio Centeno)
-**Estado**: ⬜ Pendiente
+**Estado**: 🟡 En curso (2/7 tareas)
 **Objetivo**: Construir la base del análisis estático para la comprensión del código.
 
 ### Entregables
@@ -100,15 +100,15 @@ es negociable**).
 1. `pyreach.ast.builder`: convertir archivos `.py` en objetos `ModuleAST`.
 2. `pyreach.ast.symbols`: construcción de la tabla de símbolos por módulo.
 3. `pyreach.ast.resolver`: resolución de alias de importación entre la aplicación y `site-packages`.
-4. Módulos `pyreach.loaders.source` y `pyreach.loaders.packages`.
+4. Módulos `pyreach.loaders.source` y `pyreach.loaders.packages`. ✅ (`source.py` implementado)
 5. Suite de pruebas exhaustiva de recorrido AST, tablas de símbolos y resolución de importaciones.
 
 ### Tareas detalladas
 
 | ID | Descripción | Esfuerzo (h) | Responsable | Estado | Criterio de aceptación |
 |----|-------------|--------------|-------------|--------|------------------------|
-| S2-T1 | Mitigación M1: autoestudio intensivo del módulo `ast` (2 días) | 16 | Julio | ⬜ | Clasifica y recorre manualmente todos los tipos de nodo en archivos de muestra |
-| S2-T2 | Implementar `SourceLoader` con soporte de patrones de exclusión | 4 | Julio | ⬜ | Descubre todos los `.py` excluyendo `venv/`, `__pycache__/` |
+| S2-T1 | Mitigación M1: autoestudio intensivo del módulo `ast` (2 días) | 16 | Julio | ✅ | Clasifica y recorre manualmente todos los tipos de nodo en archivos de muestra |
+| S2-T2 | Implementar `SourceLoader` con soporte de patrones de exclusión | 4 | Julio | ✅ | Descubre todos los `.py` excluyendo `venv/`, `__pycache__/` |
 | S2-T3 | Implementar `PackageResolver`: nombre de paquete → ruta en `site-packages` | 6 | Julio | ⬜ | Resuelve el 100 % de los paquetes instalados en un venv de prueba |
 | S2-T4 | Implementar `ASTBuilder`: parseo, FQN del módulo y envoltura en `ModuleAST` | 8 | Julio | ⬜ | Parsea 50 archivos Python diversos sin errores de sintaxis; omite los inválidos con advertencia |
 | S2-T5 | Implementar `SymbolTableBuilder`: nombres locales, imports, `from ... import` | 10 | Julio | ⬜ | Resuelve `import numpy as np`, `from x import y as z`, `from . import sibling` |

@@ -111,6 +111,7 @@ uv run pytest tests/unit/loaders --cov=pyreach.loaders --cov-report=term-missing
 
 ## Definition of Done
 
-- [ ] Loader + tests merged.
-- [ ] Defaults and merge rules documented in docstrings.
-- [ ] Coverage >=85% on `loaders/`.
+- [x] Loader + tests merged.
+- [x] Defaults and merge rules documented in docstrings.
+- [x] Coverage >=85% on `loaders/` (92% achieved).
+
