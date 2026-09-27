@@ -1,11 +1,9 @@
 import ast
-import pytest
-from typing import cast
 
-from pyreach.ast.builder import ModuleAST, ASTBuilder
+from pyreach.ast.builder import ModuleAST
 
 # We will create this module in the implementation phase
-from pyreach.ast.symbols import SymbolTableBuilder, SymbolEntry
+from pyreach.ast.symbols import SymbolTableBuilder
 
 
 def make_module(source: str, module_fqn: str = "test_pkg.test_mod") -> ModuleAST:

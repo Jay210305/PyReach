@@ -116,7 +116,7 @@ uv run pytest tests/unit/loaders --cov=pyreach.loaders --cov-report=term-missing
 
 ## Definition of Done
 
-- [ ] Corpus and tests merged.
-- [ ] Coverage thresholds met on `ast/` and `loaders/`.
-- [ ] Fixtures documented for Sprint 3 reuse.
-- [ ] No real-world snippet execution during tests.
+- [x] Corpus and tests merged.
+- [x] Coverage thresholds met on `ast/` and `loaders/`.
+- [x] Fixtures documented for Sprint 3 reuse.
+- [x] No real-world snippet execution during tests.

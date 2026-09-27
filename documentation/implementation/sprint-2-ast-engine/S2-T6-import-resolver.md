@@ -140,7 +140,7 @@ uv run pytest tests/unit/ast --cov=pyreach.ast --cov-report=term-missing
 
 ## Definition of Done
 
-- [ ] Resolver + tests merged.
-- [ ] `requests.get` example passes.
-- [ ] Confidence model documented and consumed by S3-T4.
-- [ ] Coverage >=85% on `ast/`.
+- [x] Resolver + tests merged.
+- [x] `requests.get` example passes.
+- [x] Confidence model documented and consumed by S3-T4.
+- [x] Coverage >=85% on `ast/`.

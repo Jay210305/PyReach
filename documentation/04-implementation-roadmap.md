@@ -92,16 +92,16 @@ es negociable**).
 
 **Duración**: semanas 7-8
 **Esfuerzo**: 45 horas (Julio Centeno)
-**Estado**: 🟡 En curso (2/7 tareas)
+**Estado**: ✅ Completado (7/7 tareas)
 **Objetivo**: Construir la base del análisis estático para la comprensión del código.
 
 ### Entregables
 
 1. `pyreach.ast.builder`: convertir archivos `.py` en objetos `ModuleAST`. ✅
-2. `pyreach.ast.symbols`: construcción de la tabla de símbolos por módulo.
-3. `pyreach.ast.resolver`: resolución de alias de importación entre la aplicación y `site-packages`.
+2. `pyreach.ast.symbols`: construcción de la tabla de símbolos por módulo. ✅
+3. `pyreach.ast.resolver`: resolución de alias de importación entre la aplicación y `site-packages`. ✅
 4. Módulos `pyreach.loaders.source` y `pyreach.loaders.packages`. ✅ (`source.py` y `packages.py` implementados)
-5. Suite de pruebas exhaustiva de recorrido AST, tablas de símbolos y resolución de importaciones.
+5. Suite de pruebas exhaustiva de recorrido AST, tablas de símbolos y resolución de importaciones. ✅
 
 ### Tareas detalladas
 
@@ -112,8 +112,8 @@ es negociable**).
 | S2-T3 | Implementar `PackageResolver`: nombre de paquete → ruta en `site-packages` | 6 | Julio | ✅ | Resuelve el 100 % de los paquetes instalados en un venv de prueba |
 | S2-T4 | Implementar `ASTBuilder`: parseo, FQN del módulo y envoltura en `ModuleAST` | 8 | Julio | ✅ | Parsea 50 archivos Python diversos sin errores de sintaxis; omite los inválidos con advertencia |
 | S2-T5 | Implementar `SymbolTableBuilder`: nombres locales, imports, `from ... import` | 10 | Julio | ✅ | Resuelve `import numpy as np`, `from x import y as z`, `from . import sibling` |
-| S2-T6 | Implementar `ImportResolver`: alias entre módulos → nombres totalmente cualificados | 8 | Julio | ⬜ | Dado `import requests`, resuelve `requests.get` a `requests.api.get` |
-| S2-T7 | Escribir fixtures de pytest con código real (fragmentos de requests, flask) | 6 | Julio | ⬜ | Cobertura ≥80 % en `ast/` y `loaders/` |
+| S2-T6 | Implementar `ImportResolver`: alias entre módulos → nombres totalmente cualificados | 8 | Julio | ✅ | Dado `import requests`, resuelve `requests.get` a `requests.api.get` |
+| S2-T7 | Escribir fixtures de pytest con código real (fragmentos de requests, flask) | 6 | Julio | ✅ | Cobertura ≥80 % en `ast/` y `loaders/` |
 
 ### Definición de terminado (DoD)
 
