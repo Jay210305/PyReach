@@ -114,3 +114,119 @@ def test_resolve_imported_call_re_export():
     res = resolver.resolve_chain(["requests", "get"], mod)
     assert res.fqn == "requests.api.get"
     assert res.confidence == 1.0
+
+
+def test_find_symbol_fqn_is_module():
+    """A FQN that exactly matches a registered module returns itself."""
+    mod = make_module("", module_fqn="mypkg")
+    index = ModuleIndex([mod])
+    assert index.find_symbol("mypkg") == "mypkg"
+
+
+def test_find_symbol_no_matching_prefix():
+    """A FQN with no registered module prefix returns None."""
+    mod = make_module("", module_fqn="pkg.mod")
+    mod.symbol_table = {"f": "pkg.mod.f"}
+    index = ModuleIndex([mod])
+    # "other.x.y" shares no prefix with "pkg.mod"
+    assert index.find_symbol("other.x.y") is None
+
+
+def test_find_symbol_symbol_missing_in_module():
+    """A FQN whose module prefix exists but symbol is missing returns None."""
+    mod = make_module("", module_fqn="pkg")
+    mod.symbol_table = {"known": "pkg.known"}
+    index = ModuleIndex([mod])
+    # "pkg.unknown" — module exists, symbol does not
+    assert index.find_symbol("pkg.unknown") is None
+
+
+def test_find_symbol_chain_spans_modules():
+    """A chain that resolves through multiple modules via re-export."""
+    # app/main.py: import requests
+    app = make_module("import requests", module_fqn="app.main")
+    app.symbol_table = {"requests": "requests"}
+
+    # requests/__init__.py: from .core import Session
+    req_init = make_module("from .core import Session", module_fqn="requests")
+    req_init.symbol_table = {"Session": "requests.core.Session"}
+
+    # requests/core.py: class Session: ...
+    req_core = make_module("class Session: pass", module_fqn="requests.core")
+    req_core.symbol_table = {"Session": "requests.core.Session"}
+
+    index = ModuleIndex([app, req_init, req_core])
+    resolver = ImportResolver(index)
+
+    res = resolver.resolve_chain(["requests", "Session"], app)
+    assert res.fqn == "requests.core.Session"
+    assert res.confidence == 1.0
+
+
+def test_find_symbol_chain_module_not_in_index():
+    """A chain whose resolved target is not in the index returns the FQN."""
+    mod = make_module("import foo", module_fqn="app.main")
+    mod.symbol_table = {"foo": "foo"}
+    index = ModuleIndex([mod])
+    resolver = ImportResolver(index)
+
+    # "foo.Bar" resolves to "foo.Bar" but "foo" is in the index,
+    # "foo.Bar" is not — current becomes None after lookup
+    res = resolver.resolve_chain(["foo", "Bar"], mod)
+    assert res.fqn == "foo.Bar"
+    assert res.confidence == 0.0
+
+
+def test_resolve_chain_empty_list():
+    """An empty chain returns an unresolved target."""
+    mod = make_module("", module_fqn="app.main")
+    index = ModuleIndex([mod])
+    resolver = ImportResolver(index)
+    res = resolver.resolve_chain([], mod)
+    assert res.fqn == ""
+    assert res.confidence == 0.0
+    assert res.resolved is False
+
+
+def test_resolve_chain_has_module_prefix_but_unresolved():
+    """A chain whose FQN has a module prefix but symbol is not found."""
+    mod = make_module("", module_fqn="app.main")
+    index = ModuleIndex([mod])
+    resolver = ImportResolver(index)
+
+    res = resolver.resolve_chain(["unknown", "foo"], mod)
+    assert res.fqn == "unknown.foo"
+    assert res.confidence == 0.0
+    assert res.resolved is False
+
+
+def test_extract_attribute_chain_unsupported_node():
+    """A Call node in the chain returns an empty list."""
+    source = "func()"
+    tree = ast.parse(source)
+    call_node = cast(ast.Call, tree.body[0])
+    chain = ImportResolver.extract_attribute_chain(call_node)
+    assert chain == []
+
+
+def test_extract_attribute_chain_nested_attribute():
+    """A deeply nested attribute chain extracts all names."""
+    source = "a.b.c.d"
+    tree = ast.parse(source)
+    expr = cast(ast.Expr, tree.body[0])
+    chain = ImportResolver.extract_attribute_chain(expr.value)
+    assert chain == ["a", "b", "c", "d"]
+
+
+def test_has_module_prefix_true():
+    mod = make_module("", module_fqn="pkg.sub")
+    index = ModuleIndex([mod])
+    assert index.has_module_prefix("pkg.sub.foo.bar") is True
+    assert index.has_module_prefix("pkg.sub") is True
+
+
+def test_has_module_prefix_false():
+    mod = make_module("", module_fqn="pkg.sub")
+    index = ModuleIndex([mod])
+    assert index.has_module_prefix("other.foo") is False
+    assert index.has_module_prefix("") is False

@@ -131,9 +131,18 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self._visited_modules.remove(base_module)
 
     def visit_Assign(self, node: ast.Assign) -> None:
+        """Track simple attribute aliases at module scope.
+
+        Handles ``Name = OtherName.Attribute`` patterns (e.g.
+        ``Client = requests.Session``) so the resolver can follow the
+        alias to the underlying FQN.
+
+        Intentionally narrow: does not handle ``Name = Name`` renames,
+        ``Name = Call()`` results, or chained assignments. Those are
+        rare in import/include contexts and are left for a future
+        refinement if coverage demands it.
+        """
         if isinstance(node.value, ast.Attribute) and isinstance(node.value.value, ast.Name):
-            # simple alias: Client = requests.Session
-            # value is requests.Session -> base is requests
             base_name = node.value.value.id
             if base_name in self.symbols:
                 base_fqn = self.symbols[base_name].fqn
@@ -146,14 +155,12 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    # Don't descend into function or class bodies unless they are at module scope?
-    # Wait, the node visitor by default descends into everything if we call generic_visit.
-    # To ONLY walk module scope for imports, we should override FunctionDef/ClassDef to do nothing.
+    # Only walk module scope for imports — stop at function/class bodies.
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        pass  # Do not descend
+        pass
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        pass  # Do not descend
+        pass
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         pass  # Do not descend

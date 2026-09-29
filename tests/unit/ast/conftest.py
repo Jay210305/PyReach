@@ -60,7 +60,7 @@ def opened_project(tmp_path: Path) -> Path:
     """Copies the code_samples fixture project to tmp_path for mutation testing."""
     import shutil
 
-    real_project_root = Path(__file__).resolve().parent.parent.parent.parent
+    real_project_root = Path(__file__).resolve().parents[3]
     src = real_project_root / "tests" / "fixtures" / "code_samples"
     dst = tmp_path / "code_samples"
     shutil.copytree(src, dst)

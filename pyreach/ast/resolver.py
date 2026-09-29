@@ -1,3 +1,11 @@
+"""Import resolution for the PyReach AST engine.
+
+``ModuleIndex`` indexes parsed modules by fully-qualified name and supports
+symbol lookups across module boundaries. ``ImportResolver`` uses an index
+to resolve attribute chains (e.g. ``requests.get``) to their defining
+FQNs with a confidence score.
+"""
+
 import ast
 import builtins
 from collections.abc import Iterable
@@ -21,27 +29,41 @@ class ModuleIndex:
         return self._modules.get(fqn)
 
     def find_symbol(self, fqn: str) -> str | None:
+        """Resolve a fully-qualified name to the module that defines it.
+
+        Two-step lookup: find the longest module prefix, then look up the
+        remaining attribute chain in that module's symbol table.
+        """
         if fqn in self._modules:
             return fqn
 
         parts = fqn.split(".")
-        for i in range(len(parts) - 1, 0, -1):
+        # Find the longest registered module prefix
+        for i in range(len(parts), 0, -1):
             mod_fqn = ".".join(parts[:i])
-            symbol_path = parts[i:]
+            if mod_fqn not in self._modules:
+                continue
 
-            mod = self.get(mod_fqn)
-            if mod:
-                # Traverse the symbol path within the module
-                current_fqn = mod_fqn
-                current_mod = mod
-                for sym in symbol_path:
-                    if sym in current_mod.symbol_table:
-                        next_fqn = current_mod.symbol_table[sym]
-                        # Continue if another module, but usually one level
-                        return next_fqn
-                    else:
-                        return None  # Symbol not found in this module
-                return current_fqn
+            attr_chain = parts[i:]
+            if not attr_chain:
+                return mod_fqn
+
+            mod = self._modules[mod_fqn]
+            # Walk the attribute chain through the module's symbol table
+            current: ModuleAST | None = mod
+            current_fqn = mod_fqn
+            for sym in attr_chain:
+                if current is None:
+                    return None
+                if sym in current.symbol_table:
+                    current_fqn = current.symbol_table[sym]
+                    current = self.get(current_fqn)
+                    if current is None:
+                        # Resolved to a name in another module; stop here
+                        return current_fqn
+                else:
+                    return None
+            return current_fqn
 
         return None
 

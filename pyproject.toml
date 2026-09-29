@@ -54,9 +54,16 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+exclude = [
+    ".agents",
+    "tests/fixtures",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+exclude = [
+    "tests/fixtures",
+]
 
 [tool.black]
 line-length = 100
