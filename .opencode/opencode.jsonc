@@ -1,0 +1,33 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "fulbo-laya": {
+        "type": "local",
+        "command": ["node", ".opencode/mcp/laya-mcp.mjs"]
+      },
+      "fulbo-postgres": {
+        "type": "local",
+        "command": ["cmd", "/c", "npx", "-y", "@modelcontextprotocol/server-postgres", "%FULBO_MCP_DATABASE_URL%"],
+        "disabled": true
+      },
+      "fulbo-git": {
+        "type": "local",
+        "command": ["uvx", "mcp-server-git", "--repository", "."],
+        "cwd": "."
+      },
+      "fulbo-fetch": {
+        "type": "local",
+        "command": ["uvx", "mcp-server-fetch"],
+        "environment": {
+          "PYTHONIOENCODING": "utf-8"
+        }
+      },
+      "fulbo-docker": {
+        "type": "local",
+        "command": ["docker", "mcp", "gateway", "run", "--profile", "fulbo"],
+        "disabled": true
+      }
+    }
+  }
+}

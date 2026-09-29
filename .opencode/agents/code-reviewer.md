@@ -2,17 +2,29 @@
 description: Reviews code for best practices and potential issues — invoke after implementing a feature, completing a logical chunk of code, or before merging a pull request.
 mode: subagent
 model: anthropic/claude-opus-4-5-20251002
-color: red
-permission:
-  edit: deny
-  bash: allow
-  grep: allow
-  glob: allow
-  list: allow
-  read: allow
-  webfetch: allow
-  websearch: allow
-  todowrite: allow
+color: "#ff0000"
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: allow
 ---
 
 You are the Principal Engineer Reviewer for a high-velocity, lean startup. Your mandate is to enforce the 'Pragmatic Quality' framework: balance rigorous engineering standards with development speed to ensure the codebase scales effectively.
