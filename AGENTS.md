@@ -121,7 +121,7 @@ PyReach/
 │   ├── 09-cicd-integration.md
 │   ├── 10-risk-and-contingency-plan.md
 │   └── implementation/            <- decomposed tasks (S1-T0 … S4-T8)
-└── pyreach/                       <- (NOT YET CREATED) source package
+└── pyreach/                       <- source package (Sprint 1+2: parsers, db, osv, ast, loaders; Sprint 3-4: callgraph, reachability, output, cli pendientes)
 ```
 
 Target package structure (from `03-technical-specifications.md` §2):
@@ -415,9 +415,10 @@ Task IDs: `S1-T0 … S4-T8`. `S1-T0` (uv bootstrap) is a hard prerequisite for a
 - [x] Task decomposition complete (`documentation/implementation/`, S1-T0 … S4-T8).
 - [x] Environment bootstrapped with uv; all dependencies allocated in `.venv`.
 - [x] `pyproject.toml`, `uv.lock`, `.gitignore`, `AGENTS.md` created.
-- [ ] `pyreach/` package not yet implemented — start at
-      `documentation/implementation/sprint-1-data-foundation/S1-T0-environment-bootstrap-uv.md`
-      then S1-T1.
+- [x] Sprint 1 completado (S1-T0..T7): parsers `Dependency`/`RequirementsTxtParser`/`PipfileLockParser`, `osv_json`/`importer`, `db` schema+connection, fixtures TDD, CI gate — `04:34` M1 cerrado.
+- [x] Sprint 2 completado (S2-T1..T7): `pyreach/ast` (`builder`/`symbols`/`resolver`), `loaders/source`+`packages`, study notes `documentation/study/ast-notes.md`, corpus `tests/fixtures/code_samples/` — M2 cerrado (2026-09-29).
+- [ ] Sprint 3 pendiente (S3-T1..T8): `callgraph` + `reachability` — siguiente en ruta crítica.
+- [ ] Sprint 4 pendiente (S4-T1..T8): SARIF/CLI/CI.
 
 When you finish a task, update its Definition of Done checklist and run the full gate:
 

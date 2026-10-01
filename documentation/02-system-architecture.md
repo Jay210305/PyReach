@@ -214,6 +214,19 @@ CREATE TABLE reachability_results (
    [CLI Reporter] --(stdout summary)---------------> [User / CI Log]
 ```
 
+## Layer Mapping — 4-Layer Clean Architecture (Práctica 5) ↔ Pipeline View
+
+Práctica 5 describes the system as a 4-layer Clean Architecture. The engineering pipeline below maps 1:1 to that view:
+
+| Academic 4-Layer (Práctica 5) | Pipeline Component(s) in this doc | Modules |
+|-------------------------------|----------------------------------|---------|
+| **1. Presentación (CLI)** | Output Layer — CLI Reporter, SARIF Serializer | `pyreach.cli`, `pyreach.output.sarif`, `pyreach.output.summary`, `pyreach.config` |
+| **2. Lógica de Negocio / Dominio** | Analysis Core — AST Builder, Call Graph Engine, Reachability Analyzer | `pyreach.ast.*`, `pyreach.callgraph.*`, `pyreach.reachability.*` |
+| **3. Acceso a Datos / Persistencia** | Input Layer + Internal Store access | `pyreach.parsers.*`, `pyreach.loaders.*`, `pyreach.osv.*`, `pyreach.db.*` |
+| **4. Base de Datos Local** | Internal Store (SQLite) | `osv.db` (`~/.pyreach/osv.db` dev / `/opt/pyreach/osv.db` CI) |
+
+> This mapping resolves the terminology gap between the APA deliverable (4 layers) and the engineering docs (Input/Analysis/Output). No code change is required; both describe the same dependency direction (outer → inner) and the same `k=5` bounded `DiGraph` traversal.
+
 ## Deployment Architecture
 
 ### Local Developer Mode
@@ -238,6 +251,8 @@ Corporate CI Runner (Lidercom On-Prem)
     └── Quality Gate (exit code check + SARIF dashboard ingest)
 ```
 
+> **Hardware note (conciliación con Práctica 5):** Práctica 5 especifica Workstation `≥6 cores/16 GB` como **recomendado para desarrollo** (análisis interactivo `shift-left`); `09-cicd-integration.md:161` especifica Runner `2 cores/4 GB mín, 4 cores/8 GB recomendado` como **mínimo CI**. Ambos son coherentes: el runner CI es headless y usa `--exclude` + cache; la workstation asume IDE + múltiples `site-packages` abiertos.
+
 ## Technology Stack
 
 | Layer | Technology | Version | Justification |
@@ -254,8 +269,13 @@ Corporate CI Runner (Lidercom On-Prem)
 
 - **Memory**: For large transitive dependency trees, NetworkX DiGraph may consume significant RAM. Mitigation: limit graph to application + direct dependencies first; lazily load transitive library ASTs only when vulnerable symbols are present.
 - **Recursion Depth**: Python's default recursion limit (~1000) may be exceeded in deep call chains. Use iterative BFS/DFS for graph traversal.
-- **Injection Safety**: When parsing manifests, never `eval()` requirements lines. Use regex-based or `packaging.requirements` parser.
-- **Path Traversal**: Ensure all file reads are confined to the target project directory and resolved `site-packages` paths. Reject relative paths containing `..`.
+- **Injection Safety (OWASP A03)**: When parsing manifests, never `eval()` requirements lines. Use `packaging.requirements` parser. All SQLite access uses parametrized queries (`?` placeholders) via `pyreach.db.connection`; no `os.system`/`subprocess` with unsanitized input.
+- **Path Traversal (OWASP A01)**: Ensure all file reads are confined to the target project directory and resolved `site-packages` paths. Reject relative paths containing `..` via `Path.resolve()` + prefix check (logical chroot).
+- **Cryptographic Failures (OWASP A02)**: `pyreach sync-osv` uses TLS 1.3 with strict X.509 validation and SHA-256 checksum verification of OSV dumps. Scan phase is offline: 0 bytes to cloud (RNF-01, ISO/IEC 27001 A.8.12).
+- **Security Misconfiguration (OWASP A05)**: SARIF artifacts written with `umask 027` (`chmod 640`), no `777`; stack traces suppressed unless `--verbose`; debug logs never leak source to stdout in CI.
+- **Data Integrity (OWASP A08)**: No `pickle` deserialization; only strict JSON/YAML. Dependencies frozen via `uv.lock`; OSV DB integrity via WAL transactions.
+- **Access Control & Data at Rest**: Execution identity delegated to OS (POSIX/Windows user) + CI ephemeral tokens. OS-level volume encryption (LUKS/BitLocker/FileVault) + `chmod 600/640` on `osv.db` and `.pyreach.yml`; AST/DiGraph held only in volatile RAM and purged on exit. RBAC roles (Backend Dev / DevSecOps Runner / ISO 27001 Auditor) are operational conventions enforced via filesystem permissions and protected branches, not in-process auth.
+- **Performance Note:** Query times: <0.2 ms for a single indexed `package=? AND version=?` B-Tree lookup; <10 ms batch for 10k advisories including `packaging` version-range filtering (see `05-data-model-and-storage.md:Performance Projections`).
 
 ---
 

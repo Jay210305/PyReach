@@ -279,11 +279,11 @@ Before building the call graph:
 
 | Dataset Size | SQLite Size | Ingestion Time | Query Time (by package) |
 |--------------|-------------|----------------|-------------------------|
-| 10,000 advisories | ~30 MB | ~3 minutes | <10 ms |
-| 50,000 advisories | ~150 MB | ~15 minutes | <20 ms |
-| 100,000 advisories | ~300 MB | ~30 minutes | <30 ms |
+| 10,000 advisories | ~30 MB | ~3 minutes | <10 ms batch / <0.2 ms single indexed lookup |
+| 50,000 advisories | ~150 MB | ~15 minutes | <20 ms batch |
+| 100,000 advisories | ~300 MB | ~30 minutes | <30 ms batch |
 
-*Note: Query times assume indexed `package_name` lookups. Version range filtering adds ~1-5 ms per advisory candidate.*
+*Note: Batch query times assume indexed `package_name` lookups + `packaging` version-range filtering (~1-5 ms per candidate). The <0.2 ms figure cited in Práctica 5 corresponds to the single-row B-Tree point query `SELECT ... WHERE package_name=? AND version=?` with composite index `(package_name, version)` on a warm SQLite page cache — the fast path used during reachability classification. Batch times above include the Python-side range evaluation.*
 
 ## Backup and Migration
 

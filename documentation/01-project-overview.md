@@ -70,6 +70,23 @@ PyReach solves this through **static reachability analysis**:
 - Handling of C-extension native code (beyond Python AST boundaries).
 - Cloud-based or SaaS execution models.
 
+### Requirements Traceability (formal enumeration per Práctica 5)
+
+The functional/non-functional enumeration `RF-01..10` / `RNF-01..07` used in Práctica 5 maps to the in-scope items above:
+
+| Code | Scope Item | Owner Module(s) |
+|------|------------|-----------------|
+| RF-01 | Manifest parsing (`requirements.txt`/`Pipfile.lock`) | `pyreach.parsers` |
+| RF-02 | OSV advisory lookup (SQLite) | `pyreach.osv`, `pyreach.db` |
+| RF-03 | Call Graph construction | `pyreach.ast`, `pyreach.callgraph` |
+| RF-04/05 | Reachability + tripartite classification | `pyreach.reachability` |
+| RF-06/07 | SARIF + call trace console | `pyreach.output`, `pyreach.cli` |
+| RF-08 | `.pyreach.yml` entrypoints/excludes | `pyreach.config`, `pyreach.cli` |
+| RF-09/10 | CI gates + triage metrics | `pyreach.cli`, `pyreach.reachability` |
+| RNF-01..07 | 0 bytes cloud, ≥70% reduction, <45s, SARIF 100%, offline, robustness, portability 3.10+ | see `02-system-architecture.md: Security & Performance` |
+
+> Full matrix is authoritative in `document/practicas/practica5.tex:Tab. trazabilidad`. This section provides the engineering shorthand.
+
 ## Stakeholders
 
 | Role | Name | Responsibility |

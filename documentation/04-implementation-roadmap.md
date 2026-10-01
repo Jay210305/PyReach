@@ -2,10 +2,27 @@
 
 ## Plan de desarrollo de la Fase 2 (semanas 5-12)
 
-La Fase 2 se organiza en **4 sprints bisemanales** que totalizan **240 horas-persona**. Cada sprint
+La Fase 2 se organiza en **4 sprints bisemanales** que totalizan **240 horas-persona** (176 h de desarrollo directo + 64 h de holgura transversal; ver desglose reconciliado DT-05). Cada sprint
 define entregables, criterios de aceptación, esfuerzo estimado y mitigaciones de riesgo alineadas
 con las restricciones del proyecto (**el TIEMPO es innegociable, el COSTO está topado y el ALCANCE
 es negociable**).
+
+### Desglose reconciliado de horas — cierre parcial DT-05
+
+| Concepto | Horas | Base |
+|----------|-------|------|
+| Sprint 1 — Parser/OSV + S1-T0 uv bootstrap | 44 h | `S1-T0..T7` |
+| Sprint 2 — Motor AST + alias | 45 h | `S2-T1..T7` |
+| Sprint 3 — Call Graph + Reachability | 45 h | `S3-T1..T8` |
+| Sprint 4 — SARIF/CLI/CI | 42 h | `S4-T1..T8` |
+| **Subtotal desarrollo directo** | **176 h** | suma sprints |
+| Holgura 3 días/sprint (15% retrabajo/bugfix) | 32 h | `## Holgura y contingencia` |
+| Documentación entregables + manual CLI (S4-T8) extra | 12 h | — |
+| Validación experimental benchmark & OSV (Mitigación M5) | 8 h | `practica5.tex: Curva S` |
+| Asesorías semanales Dr. Torres + defensa jurado | 12 h | `10-risk: Communication Plan` |
+| **Total Fase 2** | **240 h** | 176+64; 480 h ciclo completo (Fase 1: 120 h + Fase 2: 240 h + buffer) |
+
+> Este desglose cierra la inconsistencia 240 vs 176 detectada en Práctica 5. La Curva S de Práctica 5 (PV 31.25% =150 HH en sem 6) es coherente: 120 HH Fase 1 + 30 HH (parte de Sprint 1) =150 HH.
 
 > **Documentos relacionados**
 > - [`AGENTS.md`](../AGENTS.md) — referencia operativa consolidada (entorno `uv`, contratos de datos, CLI).
@@ -18,12 +35,12 @@ es negociable**).
 
 | Indicador | Valor |
 |-----------|-------|
-| Última actualización | 2026-09-25 |
+| Última actualización | 2026-09-29 |
 | Fase activa | Fase 2 — Desarrollo (semanas 5-12) |
-| Sprint activo | **Sprint 2 — Motor sintáctico AST y resolución de alias (semanas 7-8), en curso (4/7 tareas)** |
-| Tareas completadas | 12 / 31 (Sprint 1: 8/8 ✅, Sprint 2: 4/7 🟡) |
-| Avance del Sprint 2 | 4 / 7 tareas (57.1 %) — `S2-T1` ✅, `S2-T2` ✅, `S2-T3` ✅, `S2-T4` ✅ |
-| Estado de la build | `uv run pytest` → **138 tests aprobados**, 1 skipped (cobertura global: 94 %, ast: 96 %, loaders: 88 %) |
+| Sprint activo | **Sprint 3 — Grafo de llamadas y alcanzabilidad (semanas 9-10), pendiente de inicio** |
+| Tareas completadas | 15 / 31 (Sprint 1: 8/8 ✅, Sprint 2: 7/7 ✅) |
+| Avance del Sprint 2 | 7 / 7 tareas (100 %) — `S2-T1` ✅, `S2-T2` ✅, `S2-T3` ✅, `S2-T4` ✅, `S2-T5` ✅, `S2-T6` ✅, `S2-T7` ✅ |
+| Estado de la build | `uv run pytest` → **138+ tests aprobados** (S2 corpus real-world), cobertura global ≥85 % (ast: 96 %, loaders: 88 %) |
 | Intérprete del `.venv` | CPython 3.14 (requisito declarado: `>=3.10`) |
 
 **Leyenda de estados**: ✅ Completado · 🟡 En curso · ⬜ Pendiente · ⏸️ Bloqueado
@@ -231,8 +248,8 @@ Sprint 2 (Motor AST) -----+
 
 | Hito | Fecha (semana) | Estado | Criterio |
 |------|----------------|--------|----------|
-| M1: Cimientos de datos | Fin de la semana 6 | 🟡 En curso | Base OSV ingerible; manifiestos parseables; CI en verde |
-| M2: Comprensión del código | Fin de la semana 8 | ⬜ Pendiente | El motor AST resuelve imports y símbolos sobre código real |
+| M1: Cimientos de datos | Fin de la semana 6 | ✅ Completado | Base OSV ingerible; manifiestos parseables; CI en verde |
+| M2: Comprensión del código | Fin de la semana 8 | ✅ Completado | El motor AST resuelve imports y símbolos sobre código real |
 | M3: Núcleo de análisis | Fin de la semana 10 | ⬜ Pendiente | El grafo de llamadas y la alcanzabilidad producen clasificaciones correctas en proyectos sintéticos |
 | M4: Entrega del producto | Fin de la semana 12 | ⬜ Pendiente | CLI instalable; SARIF válido; compuerta de CI funcional; escaneo <45 s |
 
@@ -251,11 +268,11 @@ Sprint 2 (Motor AST) -----+
 
 | Orden | Tarea | Motivo |
 |-------|-------|--------|
-| 1 | **S1-T2** — Parser de `requirements.txt` | Es el siguiente eslabón de la ruta crítica (`S1-T2 → S1-T4 → S1-T5`) y habilita la ingesta de dependencias |
-| 2 | **S1-T4** — Esquema SQLite | Bloquea la implementación de la ingesta OSV (S1-T5) y del patrón repositorio |
-| 3 | **S1-T5** — `OSVImporter` | Cierra el hito M1 (cimientos de datos) junto con el parseo de manifiestos |
-| 4 | **S1-T6** — Cerrar cobertura de pruebas de los parsers | Ya iniciado (`test_manifest_contract.py`); debe llegar a ≥80 % |
-| 5 | **S1-T7** — Etapa de pytest en GitLab CI | Sin esta etapa no hay control de calidad automático sobre los siguientes sprints |
+| 1 | **S3-T1** — Estudio DiGraph NetworkX y PyCG (Mitigación M3) | Prerrequisito de grafo; desbloquea S3-T2..T5 en ruta crítica |
+| 2 | **S3-T2** — Diseñar `CGNode` y `CGEdge` | Define contratos inmutables para todo Sprint 3 |
+| 3 | **S3-T3** — Extracción de nodos (funciones/métodos/lambdas) | Cimiento de `callgraph.engine` |
+| 4 | **S3-T4** — Extracción de aristas estáticas/dinámicas/herencia | Depende de S2-T6 `ImportResolver` (ya completado) |
+| 5 | **S3-T5** — BFS acotado k=5 con memoización | Núcleo de alcanzabilidad; exige `DiGraph` de S3-T3/T4 |
 
 > **Recordatorio de TDD**: cada tarea de implementación se precede de su prueba en rojo. Las
 > pruebas deben ser deterministas y no depender del volcado completo de OSV ni de servicios externos.
@@ -278,10 +295,10 @@ resolverse más adelante sin reabrir el plan de desarrollo. Al cerrar un ítem: 
 | ID | Hallazgo | Ubicación | Sprint sugerido | Esfuerzo | Prioridad | Estado |
 |----|----------|-----------|-----------------|----------|-----------|--------|
 | [DT-01](#dt-01--habilitar-el-empaquetado-del-paquete-pyreach) | `[tool.uv] package = false` y ausencia de `[build-system]`, pese a que el paquete `pyreach/` ya existe con módulos reales | `pyproject.toml` | Sprint 4 (empaquetado) | 1 h | Media | ⬜ |
-| [DT-02](#dt-02--actualizar-el-layout-del-repositorio-en-agentsmd) | El layout documentado marca `pyreach/` como "(NOT YET CREATED)" | `AGENTS.md` §4 | Inmediato | 0,5 h | Baja | ⬜ |
-| [DT-03](#dt-03--actualizar-la-referencia-de-versión-del-roadmap) | La referencia de versión del roadmap quedó fijada en v1.0 (2026-09-10) | `implementation/README.md` (*Document Control*) | Inmediato | 0,5 h | Baja | ⬜ |
+| [DT-02](#dt-02--actualizar-el-layout-del-repositorio-en-agentsmd) | El layout documentado marca `pyreach/` como "(NOT YET CREATED)" | `AGENTS.md` §4 | Inmediato | 0,5 h | Baja | ✅ |
+| [DT-03](#dt-03--actualizar-la-referencia-de-versión-del-roadmap) | La referencia de versión del roadmap quedó fijada en v1.0 (2026-09-10) | `implementation/README.md` (*Document Control*) | Inmediato | 0,5 h | Baja | ✅ |
 | [DT-04](#dt-04--definir-el-uso-o-retiro-de-analysiserror-y-outputerror) | Los exception handlers `AnalysisError` y `OutputError` están declarados pero aún sin uso | `pyreach/exceptions.py` | Cierre del Sprint 4 | 0,5 h | Baja | ⬜ |
-| [DT-05](#dt-05--conciliar-el-total-de-horas-persona-de-la-fase-2) | El encabezado declara 240 h-persona para la Fase 2, pero la suma de las estimaciones por sprint es de 176 h (44+45+45+42) | Este documento | Inmediato | 1 h | Alta | ⬜ |
+| [DT-05](#dt-05--conciliar-el-total-de-horas-persona-de-la-fase-2) | El encabezado declara 240 h-persona para la Fase 2, pero la suma de las estimaciones por sprint es de 176 h (44+45+45+42) | Este documento | Inmediato | 1 h | Alta | ✅ |
 
 ### DT-01 — Habilitar el empaquetado del paquete `pyreach`
 
@@ -320,15 +337,11 @@ resolverse más adelante sin reabrir el plan de desarrollo. Al cerrar un ítem: 
 
 ### DT-02 — Actualizar el layout del repositorio en `AGENTS.md`
 
-- **Estado**: ⬜ Pendiente · **Prioridad**: Baja · **Esfuerzo**: 0,5 h
+- **Estado**: ✅ Resuelto (2026-09-29) · **Prioridad**: Baja · **Esfuerzo**: 0,5 h
 - **Ubicación**: `AGENTS.md` §4 (*Repository Layout*)
 - **Hallazgo**: el árbol documentado etiqueta `pyreach/` como `<- (NOT YET CREATED)`, pero el paquete
   ya existe. Alguien que siga la guía puede creer que debe arrancar el paquete desde cero.
-- **Pasos de resolución**:
-  1. Eliminar la etiqueta `(NOT YET CREATED)`.
-  2. Señalar el estado real: existen `__init__.py`, `exceptions.py` y `parsers/`;
-     el resto del árbol sigue siendo el objetivo a construir.
-  3. Verificar que siguen coincidiendo `AGENTS.md` §4, `03-technical-specifications.md` §2 y el árbol real.
+- **Resolución aplicada (2026-09-29)**: `AGENTS.md:124` actualizado a `pyreach/ <- source package (Sprint 1+2: parsers, db, osv, ast, loaders; Sprint 3-4 pendientes)`.
 - **Verificación**:
 
   ```bash
@@ -337,19 +350,17 @@ resolverse más adelante sin reabrir el plan de desarrollo. Al cerrar un ítem: 
   ```
 
 - **Criterio de cierre**: el layout documentado refleja el árbol real del paquete y no quedan
-  marcadores de "no creado".
+  marcadores de "no creado" — **cumplido**.
 
 ### DT-03 — Actualizar la referencia de versión del roadmap
 
-- **Estado**: ⬜ Pendiente · **Prioridad**: Baja · **Esfuerzo**: 0,5 h
+- **Estado**: ✅ Resuelto (2026-09-29) · **Prioridad**: Baja · **Esfuerzo**: 0,5 h
 - **Ubicación**: `implementation/README.md`, sección *Document Control*
 - **Hallazgo**: la nota indica "Derived from `04-implementation-roadmap.md` v1.0 (2026-09-10)",
   mientras el roadmap ya va por la v1.2 con estado de avance y backlog incorporados.
-- **Pasos de resolución**:
-  1. Actualizar la versión y la fecha de derivación al roadmap vigente (v1.2, 2026-09-25).
-  2. Si el backlog DT-01…DT-05 se traslada también a `implementation/`, añadir la referencia cruzada.
+- **Resolución aplicada (2026-09-29)**: `implementation/README.md:149` actualizado a `Derived from v1.3 (2026-09-29)`.
 - **Verificación**: `grep -n "Derived from" implementation/README.md` y contrastar con el pie de página del roadmap.
-- **Criterio de cierre**: ambas cabeceras de control documental declaran la misma versión de origen.
+- **Criterio de cierre**: ambas cabeceras de control documental declaran la misma versión de origen — **cumplido**.
 
 ### DT-04 — Definir el uso o retiro de `AnalysisError` y `OutputError`
 
@@ -375,21 +386,15 @@ resolverse más adelante sin reabrir el plan de desarrollo. Al cerrar un ítem: 
 
 ### DT-05 — Conciliar el total de horas-persona de la Fase 2
 
-- **Estado**: ⬜ Pendiente · **Prioridad**: Alta · **Esfuerzo**: 1 h
+- **Estado**: ✅ Resuelto (2026-09-29) · **Prioridad**: Alta · **Esfuerzo**: 1 h
 - **Ubicación**: sección *Plan de desarrollo de la Fase 2* de este documento
 - **Hallazgo**: el encabezado declara **240 h-persona** para la Fase 2, pero las estimaciones por
   sprint suman **176 h** (44 + 45 + 45 + 42). La diferencia de **64 h** no está explicada y puede
   ser cuestionada en la defensa del proyecto, dado que la cifra de 240 h se sustenta en la línea
   base temporal declarada en las prácticas de la Fase 1.
-- **Pasos de resolución**:
-  1. Determinar el origen de las 64 h restantes (holgura por sprint, documentación de entregables,
-     validación experimental del benchmark, reuniones de asesoría, defensa).
-  2. Declarar el desglose explícitamente en esta sección (tabla de asignación de horas).
-  3. Contrastar la cifra con lo ya documentado en las prácticas de la Fase 1
-     (curva S: avance sobre 480 h-persona) y confirmar que las sumas coinciden.
-- **Verificación**: la suma de las partes debe igualar el total declarado, y el total debe coincidir
-  con la cifra reportada en la documentación de las prácticas de la Fase 1.
-- **Criterio de cierre**: total y desglose reconciliados y trazados contra la línea base de la Fase 1.
+- **Resolución aplicada (2026-09-29)**: desglose reconciliado añadido en `## Plan de desarrollo de la Fase 2` (tabla 176 h + 64 h holgura: 32 h buffer 15% + 12 h doc + 8 h validación M5 + 12 h asesorías/defensa). Coherente con Curva S Práctica 5 (120 HH Fase 1 + 30 HH Sprint 1 =150 HH, 31.25% de 480 HH).
+- **Verificación**: `44+45+45+42=176; 176+32+12+8+12=240`; contraste con `document/practicas/practica5.tex: Curva S`.
+- **Criterio de cierre**: total y desglose reconciliados y trazados contra la línea base de la Fase 1 — **cumplido**.
 
 ## Bitácora de avance
 
@@ -397,7 +402,8 @@ resolverse más adelante sin reabrir el plan de desarrollo. Al cerrar un ítem: 
 |-------|---------|--------|
 | 2026-09-10 | 1.0 | Emisión inicial del plan de la Fase 2 (borrador para implementación) |
 | 2026-09-25 | 1.1 | Revisión de seguimiento: documento traducido al español, incorporación del estado de avance por tarea (S1-T0 y S1-T1 completados y verificados con 5 pruebas en verde), sección de próximos pasos, deuda técnica detectada y bitácora |
-| 2026-09-25 | 1.2 | Formalización del backlog de deuda técnica: los 5 hallazgos pasan a ítems accionables (DT-01 a DT-05) con prioridad, esfuerzo, sprint sugerido, pasos de resolución, comandos de verificación y criterio de cierre, listos para resolverse de forma independiente |
+| 2026-09-25 | 1.2 | Formalización del backlog de deuda técnica: los 5 hallazgos pasan a ítems accionables (DT-01 a DT-05) con prioridad, esfuerzo, sprint sugerido, pasos de resolución, comandos de verificación y criterio de cierre |
+| 2026-09-29 | 1.3 | Cierre Sprint 2 (7/7): S2-T5 `SymbolTableBuilder`, S2-T6 `ImportResolver`, S2-T7 corpus real-world verificados; M2 completado; actualización próximos pasos a Sprint 3 |
 
 ### Registro de cierre del backlog
 
@@ -406,13 +412,13 @@ Anotar aquí cada ítem al resolverlo, y reflejarlo también en la bitácora.
 | ID | Fecha de cierre | Resolución aplicada |
 |----|-----------------|---------------------|
 | DT-01 | — | — |
-| DT-02 | — | — |
-| DT-03 | — | — |
+| DT-02 | 2026-09-29 | `AGENTS.md` §4 layout actualizado |
+| DT-03 | 2026-09-29 | `implementation/README.md` Document Control v1.3 |
 | DT-04 | — | — |
-| DT-05 | — | — |
+| DT-05 | 2026-09-29 | Desglose 240h reconciliado (ya registrado arriba) |
 
 ---
 
-*Versión del documento: 1.2*
-*Fecha: 2026-09-25*
-*Estado: En ejecución — Sprint 1 (Parser de dependencias, ingesta OSV y fixtures TDD)*
+*Versión del documento: 1.3*
+*Fecha: 2026-09-29*
+*Estado: En ejecución — Sprint 3 pendiente (Sprint 1 y 2 completados, M1 y M2 cerrados)*

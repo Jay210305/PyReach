@@ -237,19 +237,37 @@ pyreach [OPTIONS] <PROJECT_PATH>
 | `--manifest` | `-m` | string | `requirements.txt` | Path to dependency manifest |
 | `--db-path` | `-d` | string | `~/.pyreach/osv.db` | Path to local OSV SQLite database |
 | `--output` | `-o` | string | `pyreach-results.sarif` | Output SARIF file path |
-| `--entry-point` | `-e` | string (multi) | auto-detect | Additional entry point function FQNs |
-| `--max-depth` | `-k` | int | `5` | Maximum call graph traversal depth |
-| `--include-potentially` | | flag | False | Include POTENTIALLY_REACHABLE in failure exit code |
+| `--entry-point` | `-e` | string (repeatable) | auto-detect | Additional entry point function FQNs (repeatable) |
+| `--max-depth` | `-k` | int | `5` (never >7) | Maximum call graph traversal depth |
+| `--include-potentially` | | flag | False | Include POTENTIALLY_REACHABLE in failure exit code (`--include-potentially` treats warning as failure) |
+| `--include-all` | | flag | False | Include NOT_REACHABLE results in output (`note` level) |
 | `--no-fail` | | flag | False | Always exit 0 regardless of findings |
 | `--format` | `-f` | string | `sarif` | Output format: `sarif`, `json`, `text` |
+| `--exclude` | | string (repeatable) | `[]` | Path pattern to exclude from analysis (repeatable, e.g., `tests/`) |
+| `--cache` | | flag | True | Reuse call graph cache from SQLite (`file_hashes`) if available |
 | `--verbose` | `-v` | flag | False | Enable debug logging |
-| `--version` | | flag | False | Show version and exit |
+| `--quiet` | `-q` | flag | False | Suppress non-error output (CI mode) |
+| `--version` / `--help` | | flag | False | Show version/help and exit |
+
+### Subcommand: `sync-osv`
+
+```bash
+pyreach sync-osv [--db-path <path>] [--source <url|dir>] [--incremental]
+```
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--db-path` | `-d` | string | `~/.pyreach/osv.db` | Target SQLite DB to populate (`/opt/pyreach/osv.db` on CI) |
+| `--source` | `-s` | string | OSV PyPI export URL | OSV export URL or local directory containing JSONL dump |
+| `--incremental` | | flag | True | Only process records with `modified` newer than `MAX(modified_date)` |
+
+> **Naming note:** the canonical form is the subcommand `pyreach sync-osv`. The legacy hyphenated form `pyreach-osv-sync` is deprecated and must not appear in docs or error messages.
 
 ### Exit Codes
 | Code | Meaning | CI/CD Behavior |
 |------|---------|----------------|
 | 0 | Success: no reachable vulnerabilities (or `--no-fail`) | Pipeline continues |
-| 1 | Reachable (and optionally potentially reachable) vulnerabilities found | Pipeline blocked |
+| 1 | Reachable (and optionally potentially reachable) vulnerabilities found (or `--include-potentially`) | Pipeline blocked |
 | 2 | Configuration or runtime error | Pipeline blocked (infra issue) |
 
 ### Example Invocations
@@ -403,9 +421,9 @@ PyReachError (base)
 
 ### Handling Rules
 - **ParseError on a single file**: Log warning, skip file, continue analysis (do not fail entire scan).
-- **Missing OSV DB**: Exit code 2 with explicit message instructing user to run `pyreach-osv-sync`.
+- **Missing OSV DB**: Exit code 2 with explicit message instructing user to run `pyreach sync-osv --db-path <path>` (subcommand `sync-osv`; see §6).
 - **No entry points found**: Exit code 2 with suggestion to use `-e` flag.
-- **Memory exhaustion during graph build**: Catch `MemoryError`, suggest `--max-depth` reduction or `--exclude-packages`.
+- **Memory exhaustion during graph build**: Catch `MemoryError`, suggest `--max-depth` reduction or `--exclude` patterns.
 
 ## 9. Logging Specification
 

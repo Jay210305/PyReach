@@ -146,6 +146,6 @@ Within a sprint, tasks listed later normally depend on earlier ones.
 
 ## Document Control
 
-- Derived from `04-implementation-roadmap.md` v1.0 (2026-09-10).
-- Version: 1.0
+- Derived from `04-implementation-roadmap.md` v1.3 (2026-09-29).
+- Version: 1.1 — sincronizado con cierre Sprint 2 (M2 completado).
 - Maintainers: Julio Centeno, Jose Alonso Yanez.
