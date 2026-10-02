@@ -119,7 +119,7 @@ uv run pytest tests/integration -q
 
 ## Definition of Done
 
-- [ ] Five scenarios + stub advisories merged.
-- [ ] Integration suite green with 100% accuracy.
-- [ ] Diagnostics aid debugging.
-- [ ] No network or real-CVE dependency.
+- [x] Five scenarios + stub advisories merged.
+- [x] Integration suite green with 100% accuracy.
+- [x] Diagnostics aid debugging.
+- [x] No network or real-CVE dependency.

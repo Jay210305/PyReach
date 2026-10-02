@@ -135,7 +135,7 @@ uv run pytest tests/unit/reachability --cov=pyreach.reachability --cov-report=te
 
 ## Definition of Done
 
-- [ ] Classifier + tests merged.
-- [ ] Property sweep proves conservative ordering.
-- [ ] Analyzer delegates to classifier.
-- [ ] Coverage >=85% on `reachability/`.
+- [x] Classifier + tests merged.
+- [x] Property sweep proves conservative ordering.
+- [x] Analyzer delegates to classifier.
+- [x] Coverage >=85% on `reachability/`.

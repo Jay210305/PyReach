@@ -128,7 +128,7 @@ uv run pytest tests/unit/callgraph --cov=pyreach.callgraph --cov-report=term-mis
 
 ## Definition of Done
 
-- [ ] Node extractor + tests merged.
-- [ ] >=95% extraction demonstrated on the corpus.
-- [ ] FQN conventions documented.
-- [ ] Node metadata ready for S3-T4.
+- [x] Node extractor + tests merged.
+- [x] >=95% extraction demonstrated on the corpus.
+- [x] FQN conventions documented.
+- [x] Node metadata ready for S3-T4.

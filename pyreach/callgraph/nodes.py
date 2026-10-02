@@ -10,7 +10,23 @@ from pyreach.exceptions import AnalysisError
 try:
     import networkx as nx
 except ImportError:  # pragma: no cover
-    nx = None  # type: ignore[assignment]
+    nx = None
+
+
+# mypy: disable-error-code="import-untyped,unused-ignore"
+
+
+def _coerce_optional_str(val: object) -> str | None:
+    if val is None:
+        return None
+    return str(val)
+
+
+def _coerce_optional_int(val: object) -> int | None:
+    if val is None:
+        return None
+    return int(val)  # type: ignore[call-overload]
+
 
 NodeType = Literal["FUNCTION", "METHOD", "CLASS", "LAMBDA"]
 
@@ -53,8 +69,8 @@ class CGNode:
     def from_row(cls, row: dict[str, object]) -> CGNode:
         return cls(
             fqn=str(row["node_fqn"]),
-            file_path=row.get("file_path") if row.get("file_path") is not None else None,  # type: ignore[arg-type]
-            line_number=row.get("line_number") if row.get("line_number") is not None else None,  # type: ignore[arg-type]
+            file_path=_coerce_optional_str(row.get("file_path")),
+            line_number=_coerce_optional_int(row.get("line_number")),
             node_type=row["node_type"],  # type: ignore[arg-type]
         )
 

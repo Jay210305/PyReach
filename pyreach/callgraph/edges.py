@@ -11,7 +11,10 @@ from pyreach.exceptions import AnalysisError
 try:
     import networkx as nx
 except ImportError:  # pragma: no cover
-    nx = None  # type: ignore[assignment]
+    nx = None
+
+
+# mypy: disable-error-code="import-untyped,unused-ignore"
 
 EdgeType = Literal["STATIC", "DYNAMIC", "INHERITANCE", "IMPORT"]
 
@@ -41,10 +44,10 @@ def add_cgedge(graph: object, edge: CGEdge) -> None:
     if nx is None:  # pragma: no cover
         raise AnalysisError("networkx not installed")
     assert isinstance(graph, nx.DiGraph)
-    # dedup by (caller.fqn, callee.fqn, edge_type) — matches schema UNIQUE(caller_id, callee_id, edge_type)
-    # DiGraph collapses (caller,callee) to one edge; we keep edge_type in attrs to distinguish
-    # S3-T2 council note: if edge_type differs, both can co-exist logically but DiGraph keeps last;
-    # S3-T3 will document first-wins or max-confidence policy. Here we store edge_type explicitly.
+    # Dedup by (caller.fqn, callee.fqn, edge_type); matches schema
+    # UNIQUE(caller_id, callee_id, edge_type). DiGraph collapses
+    # (caller,callee) to one edge; we keep edge_type in attrs to distinguish.
+    # S3-T3 will document first-wins or max-confidence policy.
     graph.add_edge(
         edge.caller.fqn,
         edge.callee.fqn,

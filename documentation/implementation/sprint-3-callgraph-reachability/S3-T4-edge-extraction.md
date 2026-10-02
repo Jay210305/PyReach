@@ -135,7 +135,7 @@ uv run pytest tests/unit/callgraph --cov=pyreach.callgraph --cov-report=term-mis
 
 ## Definition of Done
 
-- [ ] Edge extractor + tests merged.
-- [ ] All dynamic patterns from the spec covered.
-- [ ] Conservative fallbacks present and tested.
-- [ ] Coverage >=85% on `callgraph/`.
+- [x] Edge extractor + tests merged.
+- [x] All dynamic patterns from the spec covered.
+- [x] Conservative fallbacks present and tested.
+- [x] Coverage >=85% on `callgraph/`.

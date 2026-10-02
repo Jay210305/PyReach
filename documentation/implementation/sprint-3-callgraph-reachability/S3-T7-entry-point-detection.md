@@ -121,7 +121,7 @@ uv run pytest tests/unit/reachability --cov=pyreach.reachability --cov-report=te
 
 ## Definition of Done
 
-- [ ] Detector + tests merged.
-- [ ] CLI/config override merge exposed for Sprint 4.
-- [ ] Empty-entry `ConfigError` path tested.
-- [ ] Coverage >=85% on `reachability/`.
+- [x] Detector + tests merged.
+- [x] CLI/config override merge exposed for Sprint 4.
+- [x] Empty-entry `ConfigError` path tested.
+- [x] Coverage >=85% on `reachability/`.

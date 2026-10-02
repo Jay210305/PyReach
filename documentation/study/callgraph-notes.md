@@ -1,215 +1,245 @@
-# Call Graph Engine Study Notes — Mitigation M3 (S3-T1)
+# Call Graph Study Notes — Mitigation M3 (S3-T1)
 
-> Internal reference for Sprint 3 implementation (S3-T2..S3-T8). Produced as Risk R1/R2 mitigation.
-> Related: `06-ast-and-callgraph-engine.md` §2-§3, `05-data-model-and-storage.md`, `10-risk-and-contingency-plan.md` R1, PyCG paper arXiv:2103.00587, `networkx` 3.x docs.
-
----
-
-## 1. Node Identity Decision — Frozen for S3-T2
-
-### Options considered
-
-| Approach | How nodes are stored | Pros | Cons |
-|----------|----------------------|------|------|
-| **A. `CGNode` objects as graph keys** | `G.add_node(CGNode(...))` — object identity is the key | Type-safe, edge carries `CGNode` directly | Duplicate objects with same `fqn` but different `line_number` create duplicate keys; `frozen=True` prevents attribute mutation; SQLite cache must serialize whole object; `G.nodes` view returns objects, harder to sort/JSON-serialize |
-| **B. `fqn` strings as keys, `CGNode` in attributes** *(chosen)* | `G.add_node(fqn, node=CGNode(...), node_type=..., file_path=..., line_number=...)` | Single source of truth — `fqn` is the dedup key (matches `cg_nodes.fqn` UNIQUE); sorting by string is deterministic; `node_link_data` round-trips cleanly; avoids frozen-object attribute-mutation pitfall (§Edge Cases) | Requires one indirection to recover `CGNode` (`G.nodes[fqn]["node"]`) |
-
-### Decision: **B — `fqn: str` as DiGraph key**
-
-**Rationale:**
-1. **Matches storage.** `05-data-model-and-storage.md` defines `cg_nodes(fqn TEXT PRIMARY KEY)` and `cg_edges(caller_fqn, callee_fqn)`. String keys map 1:1, no translation table.
-2. **Avoids duplication.** Two `CGNode(fqn="pkg.mod.func", line_number=10 vs 12)` would otherwise be distinct keys; with string keys S3-T3 dedupes by `fqn` by construction.
-3. **Deterministic ordering.** `sorted(G.nodes)` is stable string sort — needed for SARIF and test snapshots. Object sort requires `order=True` on dataclass and still breaks on equal `fqn`.
-4. **Interop.** `nx.node_link_data` serializes string keys natively; with objects it emits opaque `id`.
-5. **Pitfall avoidance.** `CGNode` is `frozen=True` for hashability (S3-T2 spec). If the node *is* the key, adding attributes later (`G.nodes[node]["weight"]=...`) mutates the node view and violates frozen semantics. With string keys, attributes live in the node data dict, not on the object.
-
-Adopted by S3-T2: `pyreach/callgraph/nodes.py` defines `CGNode` frozen/order; graph helpers expose `add_cgnode(G, node: CGNode)` that does `G.add_node(node.fqn, node=node, ...)`.
-
-Lambda sentinel: `fqn = f"<lambda>:{rel_posix}:{lineno}"` per `06-...md` §2.1. Synthetic sentinels: `"<DYNAMIC>"`, `"<UNRESOLVED>"` — also string keys, never collide with real dotted FQNs.
+> Internal reference document for Sprint 3 implementation tasks (S3-T2 through S3-T8).
+> Not user-facing. Produced as part of Risk R1/M3 mitigation.
 
 ---
 
-## 2. DiGraph Fundamentals (S3-T1 §1.1)
+## 1. Node Identity Decision
 
-### Verified API surface (repl, `networkx==3.4.2`)
+**Decision**: Use `fqn` strings as NetworkX node keys; store `CGNode` attributes in `G.nodes[fqn]`.
 
-```python
-import networkx as nx
+**Rationale**:
 
-G = nx.DiGraph()
-# add nodes/edges with attributes
-G.add_node("pkg.mod.func", node_type="FUNCTION", line_number=10)
-G.add_node("pkg.mod.Class.method", node_type="METHOD", file_path="pkg/mod.py")
-G.add_edge("pkg.mod.func", "pkg.mod.Class.method", edge_type="STATIC", confidence=1.0)
-G.add_edge("a", "b", edge_type="DYNAMIC", confidence=0.5)
-# DiGraph collapses parallel edges — second add overwrites edge data (R1 mitigation)
-G.add_edge("a", "b", edge_type="STATIC", confidence=1.0)
-assert G["a"]["b"]["edge_type"] == "STATIC"  # not MultiDiGraph
+1. **SQLite cache alignment**: `cg_nodes` table stores `fqn TEXT` as the natural key. Storing strings as node keys means the graph and the cache use the same identifier without translation.
+2. **Avoids duplicate objects**: Two `CGNode` instances with the same FQN but different `line_number` (e.g., conditional definitions) are distinct objects but represent the same graph vertex. String keys deduplicate naturally.
+3. **Cheaper traversal**: String comparison is faster than dataclass comparison during BFS expansion.
+4. **Frozen dataclass as key works but is risky**: `CGNode(frozen=True, order=True)` is hashable and can be a node key directly (verified: `hash(n1) == hash(n1)`, `n1 in {n1, n2}`). However, if you store the same `CGNode` object in both the key and the attributes, you get redundancy and potential inconsistency. Pick one representation.
 
-# queries
-list(G.successors("pkg.mod.func"))
-list(G.predecessors("pkg.mod.Class.method"))
-G.get_edge_data("a", "b")  # → {"edge_type": "STATIC", "confidence": 1.0}
-G.has_node("missing")      # → False
-sub = G.subgraph(["a", "b"])  # view
+**Convention**:
 
-# MultiDiGraph would keep parallel edges:
-MG = nx.MultiDiGraph()
-MG.add_edge("a", "b", edge_type="STATIC")
-MG.add_edge("a", "b", edge_type="DYNAMIC")
-assert MG.number_of_edges() == 2  # ← R1 forbids this; we use DiGraph
-```
+- Lambda FQNs: `"<lambda>:{rel_path}:{lineno}"` (e.g., `"<lambda>:app/utils.py:42"`)
+- Synthetic sentinel nodes: `"<DYNAMIC>"`, `"<UNRESOLVED>"`
+- Node attributes stored as: `G.nodes[fqn] = {"node": CGNode(...), "node_type": "...", "file_path": "...", "line_number": ...}`
+- Edge attributes stored as: `G.edges[u, v] = {"edge_type": "...", "confidence": ...}`
 
-**Benchmark (10k nodes, CPython 3.14, Windows):**
-
-| Op | 10k iterations | Note |
-|----|----------------|------|
-| `G.add_node(fqn)` | ~0.018 s | O(1) dict insert |
-| `G.add_edge(u, v)` | ~0.025 s | O(1) |
-| `list(G.successors(n))` | ~0.0004 ms per node | adjacency dict lookup |
-| `G.get_edge_data(u, v)` | ~0.0003 ms | hash lookup |
-
-Memory: `tracemalloc` on 10k nodes + 15k edges → ~4.2 MB (`DiGraph.__dict__` = 2 dicts). 100k edges → ~28 MB — well below Lidercom runner limit; pruning not needed until >200k edges (see §3).
+**Pitfall avoided**: `nx.Graph` (undirected) would break call directionality. Always use `nx.DiGraph`.
 
 ---
 
-## 3. Traversal & Shortest Paths (S3-T1 §1.2)
+## 2. Verified Depth-Limited BFS
 
-### What NOT to use
-
-- `nx.all_simple_paths(G, src, dst)` — enumerates *all* acyclic paths; exponential on dense graphs (100 nodes → millions of paths). Never for the scan; use bounded reachability.
-- `nx.bfs_tree` / `nx.dfs_tree` — returns a tree view without edge-type filtering or confidence tracking. Useful for demo, not for classification.
-
-### Verified depth-limited BFS (§3.2)
-
-Terminates on cycles via `visited` + `max_depth` (k=5 per `AGENTS.md`). Never recurses — uses `collections.deque` (explicit stack discipline, no Python recursion limit).
+Iterative BFS with `collections.deque`, never recursion (avoids Python recursion limit).
 
 ```python
 from collections import deque
-import networkx as nx
 
-def bounded_reachable(
-    G: nx.DiGraph,
-    entry: str,
-    target: str,
-    max_depth: int = 5,
-) -> tuple[bool, list[str]]:
-    """Return (found, path). Terminates on cycles; depth is edge hops."""
-    if entry not in G or target not in G:
-        return False, []
-    # queue holds (node, path, depth)
-    queue: deque[tuple[str, list[str], int]] = deque([(entry, [entry], 0)])
-    visited: set[str] = set()
+def depth_limited_bfs(graph, start, target, max_depth):
+    """
+    Returns (found: bool, path: list[str] | None, encountered_dynamic: bool).
+    Terminates on cyclic graphs; bounded by max_depth.
+    """
+    queue = deque([(start, [start], 0)])
+    visited = set()
+    encountered_dynamic = False
+
     while queue:
-        cur, path, depth = queue.popleft()
+        current, path, depth = queue.popleft()
+
         if depth > max_depth:
             continue
-        if cur in visited:
+        if current in visited:
             continue
-        visited.add(cur)
-        if cur == target:
-            return True, path
-        for succ in G.successors(cur):
-            queue.append((succ, path + [succ], depth + 1))
-    return False, []
+        visited.add(current)
 
-# Demo: cycle A→B→C→A, target D reachable via B→D at depth 3 — must terminate
-import networkx as nx
-G = nx.DiGraph()
-for u, v in [("A","B"),("B","C"),("C","A"),("B","D")]:
-    G.add_edge(u, v)
-assert bounded_reachable(G, "A", "D", max_depth=5)[0] is True
-assert bounded_reachable(G, "A", "D", max_depth=1)[0] is False  # depth cap
-# self-loop
-G.add_edge("X", "X")
-assert bounded_reachable(G, "X", "X", max_depth=5)[0] is True
+        if current == target:
+            return True, path, encountered_dynamic
+
+        for successor in graph.successors(current):
+            edge_data = graph.get_edge_data(current, successor)
+            edge_type = edge_data.get("edge_type", "STATIC") if edge_data else "STATIC"
+
+            if edge_type == "DYNAMIC":
+                encountered_dynamic = True
+
+            queue.append((successor, path + [successor], depth + 1))
+
+    return False, None, encountered_dynamic
 ```
 
-`tracemalloc` snippet for S3-T5 memory guard:
+**Verification results**:
 
-```python
-import tracemalloc
-tracemalloc.start()
-G = build_graph(modules)  # S3-T3/T4
-snapshot = tracemalloc.take_snapshot()
-print(snapshot.statistics("lineno")[0])
-```
+| Test | Result |
+|------|--------|
+| Simple path (entry → A → B → target, depth 3) | Found, path recorded ✅ |
+| Depth limit exceeded (chain length 7, k=5) | Not found ✅ |
+| Cyclic graph (A→B→C→A, target reachable) | Found, terminates ✅ |
+| Self-loop (f→f, f→target) | Found, terminates ✅ |
+| 100-node graph, 100 runs | ~0.00ms avg (well under 100ms budget) ✅ |
+
+**Key insight**: The `visited` set prevents infinite expansion on cycles. The `depth > max_depth` check bounds the search. Both are necessary.
+
+**Nondeterminism note**: When multiple paths exist, the BFS finds the shortest one first (BFS property). For deterministic output, sort paths before returning.
+
+**Path collection bound**: Limit to at most N (e.g., 5) shortest paths to keep SARIF output small. Use `nx.all_simple_paths` only on very small subgraphs — it is exponential on dense graphs and must never be used for the full scan.
 
 ---
 
-## 4. Serialization (S3-T1 §1.3)
+## 3. Memory and Serialization Findings
 
-### JSON (debug / off-ramps)
+### 3.1 10k-node benchmark
 
-```python
-import networkx as nx
-from networkx.readwrite import json_graph
+| Metric | Value |
+|--------|-------|
+| Build time (10k nodes + 9,999 edges) | ~297ms |
+| Peak memory | ~9.84 MB |
+| `has_path(node_00000, node_09999)` | True |
 
-data = nx.node_link_data(G, edges="edges")   # {nodes: [...], edges: [...]}
-H = json_graph.node_link_graph(data, edges="edges")
-assert set(G.nodes) == set(H.nodes)
-assert set(G.edges) == set(H.edges)
-# Note: node_link_data emits string keys cleanly because we use fqn strings (§1)
-```
+Memory is well within bounds for typical microservices. The `tracemalloc` monitoring in tests is sufficient for R1 tracking.
 
-### SQLite (primary per `05-...md`)
+### 3.2 JSON serialization (node_link_data)
+
+- `nx.node_link_data(G)` produces `{"directed": true, "multigraph": false, "graph": {}, "nodes": [...], "edges": [...]}`
+- Node attributes preserved in `nodes[].node_type`, `file_path`, `line_number`
+- Edge attributes preserved in `edges[].edge_type`, `confidence`
+- Round-trip: `nx.node_link_graph(data)` reconstructs identical graph ✅
+- JSON size for 10k-node chain: ~several KB (compact)
+
+**Key**: NetworkX 3.x uses `"edges"` key (not `"links"`) in node_link format. Verify your NetworkX version if round-trip fails.
+
+### 3.3 SQLite integration
+
+Tables from `pyreach/db/schema.sql`:
 
 ```sql
--- cg_nodes(fqn PK, file_path, line_number, node_type)
--- cg_edges(caller_fqn FK, callee_fqn FK, edge_type, confidence, UNIQUE(caller_fqn, callee_fqn))
+CREATE TABLE cg_nodes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fqn TEXT NOT NULL UNIQUE,
+    node_type TEXT NOT NULL,
+    file_path TEXT,
+    line_number INTEGER
+);
+
+CREATE TABLE cg_edges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    caller_id INTEGER NOT NULL,
+    callee_id INTEGER NOT NULL,
+    edge_type TEXT NOT NULL,
+    confidence REAL NOT NULL,
+    FOREIGN KEY (caller_id) REFERENCES cg_nodes(id),
+    FOREIGN KEY (callee_id) REFERENCES cg_nodes(id)
+);
 ```
 
-Converters live in `pyreach/callgraph/nodes.py` + `edges.py` (S3-T2 §2.4): `CGNode.to_row()/from_row()` and edge row mapping. Graph persistence is `persist_graph(G, conn)` / `load_graph(conn) -> DiGraph` — atomic transaction, not per-node commits.
+**Round-trip verified**: Insert nodes → insert edges (via `node_id_map`) → reconstruct DiGraph from JOIN query → edges match original ✅.
 
-**DiGraph vs MultiDiGraph re-confirmed:** `DiGraph` collapses duplicate `caller→callee` to one edge with merged attrs. This is the R1 mitigation — without it a hotspot like `utils.log` called from 500 sites would be 500 parallel edges and explode `all_simple_paths`. We keep `confidence = max(confidences)` on collision.
+**Converters** (to be implemented in S3-T2):
 
----
-
-## 5. PyCG Mapping (S3-T1 §1.4)
-
-| PyCG (arXiv:2103.00587) | PyReach | In scope? | Notes |
-|-------------------------|---------|-----------|-------|
-| Namespace / module | `ModuleAST.module_fqn` (`pyreach/ast/builder.py:35`) | ✅ | Computed from `file_path.relative_to(root)` |
-| Function / async function def | `CGNode node_type="FUNCTION"` | ✅ | `ast.FunctionDef` + `AsyncFunctionDef` |
-| Method def (inside ClassDef) | `CGNode node_type="METHOD"` FQN `pkg.Mod.method` | ✅ | `06-...md` §2.3 node-creation pass |
-| Class def | `CGNode node_type="CLASS"` | ✅ | Needed for `INHERITANCE` edges |
-| Lambda | `CGNode node_type="LAMBDA"` FQN `<lambda>:file:line` | ✅ | Anonymous, line-anchored |
-| Call edge (direct) | `CGEdge edge_type="STATIC" confidence=1.0` | ✅ | `ast.Call` + `ImportResolver.resolve_chain` |
-| Dynamic call | `CGEdge edge_type="DYNAMIC" confidence=0.5` | ✅ | `eval/exec/getattr/__import__/importlib` |
-| Import edge | `CGEdge edge_type="IMPORT"` | ✅ | Module-level import that enables a call |
-| Inheritance edge | `CGEdge edge_type="INHERITANCE"` | ✅ | `ClassDef.bases` + `super()` via `self` chain |
-| Points-to / assignment analysis | **Out of scope** | ❌ | PyCG tracks `x = foo; x()` via Andersen-style points-to. PyReach handles only the trivial `Client = requests.Session` alias (`pyreach/ast/symbols.py:133`); otherwise conservatively → `POTENTIALLY_REACHABLE` |
-| Context-sensitive interprocedural | **Out of scope** | ❌ | PyCG is context-sensitive; PyReach is context-insensitive bounded BFS k=5 — R1 tradeoff |
-| Dynamic attribute `getattr(obj, var)` | `DYNAMIC` | ✅ heuristic | Confidence 0.5, never `NOT_REACHABLE` — R2 (zero false negatives) |
-| Eval/exec code string | `DYNAMIC` | ✅ heuristic | Any `ast.Call(Name(id='eval'))` taints path |
-
-**Excluded and compensated:** Where PyCG would precisely rule out a call via points-to, PyReach over-approximates to `POTENTIALLY_REACHABLE` (heuristic `06-...md` §4.2). This is intentional — we trade precision for zero critical false negatives and `<45s` budget.
+- `CGNode.to_row()` → `(fqn, node_type, file_path, line_number)`
+- `CGNode.from_row(row)` → `CGNode(fqn=row[0], ...)`
+- `CGEdge` serialization: resolve caller/callee FQN → IDs via lookup, store `(caller_id, callee_id, edge_type, confidence)`
 
 ---
 
-## 6. Demo & Self-Check (S3-T1 §1.5)
+## 4. PyCG Node/Edge Model Mapping
 
-### Reproducible demo (build → serialize → reload → BFS on cycle)
+From the PyCG paper (arXiv:2103.00587):
 
-```powershell
-uv run python scripts/study/demo_digraph.py
-# expected:
-# nodes=3 edges=3
-# serialize: OK (node_link round-trip)
-# bfs A→C depth 5: found True path ['A','B','C']
-# bfs with cycle C→A: terminated (visited=3)
+| PyCG Concept | PyReach Equivalent | Notes |
+|--------------|-------------------|-------|
+| Namespaces / modules | `module_fqn` | Computed from file path relative to root |
+| Function/method definitions | `CGNode` FUNCTION/METHOD | Node creation pass (S3-T3) |
+| Call edges | `CGEdge` STATIC | Edge creation pass (S3-T4) |
+| Dynamic calls | `CGEdge` DYNAMIC | Conservative fallback (S3-T4, R2) |
+| Inheritance | `CGEdge` INHERITANCE | Class base resolution (S3-T4) |
+| Import edges | `CGEdge` IMPORT | Module-level import tracking (S3-T4) |
+
+### 4.1 PyCG features explicitly out of scope
+
+PyCG's points-to analysis is **out of scope** for PyReach. PyCG tracks object flow through assignments to resolve indirect calls precisely. PyReach compensates with conservative heuristics:
+
+1. **Simple assignment tracking**: If `x = SomeClass()` and later `x.method()`, resolve `x` to `SomeClass` and `x.method()` to `SomeClass.method`. Only works for direct instantiation, not for parameters/returns.
+2. **Dynamic patterns**: `eval`, `exec`, `getattr`, `setattr`, `__import__`, `importlib.import_module`, `apply` → always `DYNAMIC` edge to `<DYNAMIC>` sentinel with confidence 0.5.
+3. **Unresolved names**: Name not in symbol table → `<UNRESOLVED>` sentinel with confidence 0.3.
+4. **`*args`/`**kwargs` on unresolved**: Flag as dynamic.
+
+**Conservative over-approximation (R2)**: Any path containing a `DYNAMIC` edge → `POTENTIALLY_REACHABLE` (never `NOT_REACHABLE`). This is the primary false-negative mitigation.
+
+---
+
+## 5. API Quick Reference
+
+```python
+import networkx as nx
+
+# Creation
+G = nx.DiGraph()  # NOT nx.Graph, NOT nx.MultiDiGraph
+
+# Nodes
+G.add_node("fqn", node_type="FUNCTION", file_path="...", line_number=1)
+G.add_nodes_from([("a", {...}), ("b", {...})])
+G.nodes["fqn"]  # → attribute dict
+G.nodes["fqn", "node_type"]  # → "FUNCTION" (direct key access)
+list(G.nodes)  # → ["fqn1", "fqn2", ...]
+G.number_of_nodes()
+
+# Edges
+G.add_edge("caller", "callee", edge_type="STATIC", confidence=1.0)
+G.add_edges_from([("a", "b", {...}), ("b", "c", {...})])
+G.edges["caller", "callee"]  # → attribute dict
+G.get_edge_data("caller", "callee")  # → dict or None
+list(G.edges(data=True))  # → [("caller", "callee", {...}), ...]
+
+# Queries
+list(G.successors("fqn"))  # → outgoing neighbors
+list(G.predecessors("fqn"))  # → incoming neighbors
+nx.has_path(G, "a", "b")  # → bool
+nx.shortest_path(G, "a", "b")  # → list[str]
+nx.single_source_shortest_path(G, "entry")  # → dict[str, list[str]]
+
+# Subgraph
+subg = G.subgraph(["fqn1", "fqn2"])  # → DiGraph view
+
+# Serialization
+data = nx.node_link_data(G)  # → dict (JSON-serializable)
+G2 = nx.node_link_graph(data)  # → DiGraph round-trip
+json_str = json.dumps(data)
+
+# Info
+G.number_of_nodes()
+G.number_of_edges()
+G.is_directed()  # → True for DiGraph
 ```
 
-`scripts/study/demo_digraph.py` sources the snippets from §2 and §3 above.
+---
 
-### Self-check
+## 6. 10k-Node Benchmark Result
 
-- [x] Can `import networkx as nx; G=nx.DiGraph(); G.add_node(...); G.add_edge(...); list(G.successors(...))`
-- [x] Can explain why `fqn` strings are keys and `CGNode` lives in `G.nodes[fqn]["node"]`
-- [x] Can run `bounded_reachable` on a 3-node cycle and prove termination via `visited`
-- [x] Can `nx.node_link_data` → `node_link_graph` round-trip and describe `cg_nodes/cg_edges` mapping
-- [x] Can map every PyCG row in §5 and name what is out-of-scope and why (R1/R2)
+```
+Build time: 296.99ms
+Node count: 10000
+Edge count: 9999
+Peak memory: 9.84 MB
+has_path(node_00000, node_09999): True
+```
+
+Conclusion: NetworkX DiGraph handles 10k nodes comfortably. Memory pressure would appear at much larger graphs (100k+), which is beyond the scope of typical microservice scans. If it does appear, the R1 mitigation (lazy library loading, pruning, `--max-depth` reduction) applies.
 
 ---
 
-*Version 1.0 — 2026-09-29 — Owner Jose Alonso Yanez — Reviewer Julio Centeno — S3-T1 Definition of Done: Notes committed, node-identity frozen, BFS verified on cycle, serialization demonstrated.*
+## 7. Self-Check
+
+- [x] Can build, traverse, and serialize DiGraphs
+- [x] Understands PyCG node/edge types and PyReach equivalents
+- [x] Node-identity decision recorded and frozen for S3-T2
+- [x] Depth-limited BFS prototype verified on cyclic graphs
+- [x] Serialization round-trip (JSON + SQLite) demonstrated
+- [x] 10k-node benchmark completed
+- [x] `nx.Graph` vs `nx.DiGraph` vs `nx.MultiDiGraph` tradeoffs understood
+- [x] `all_simple_paths` exponential risk noted and avoided
+
+---
+
+*Document version: 1.0*
+*Date: 2026-10-01*
+*Status: Complete — ready for S3-T2*

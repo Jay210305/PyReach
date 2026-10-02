@@ -149,7 +149,7 @@ uv run pytest tests/unit/reachability --cov=pyreach.reachability --cov-report=te
 
 ## Definition of Done
 
-- [ ] Analyzer + tests merged.
-- [ ] 100-node <100ms benchmark green.
-- [ ] Cycle and depth-limit tests pass.
-- [ ] Memoization proven by test.
+- [x] Analyzer + tests merged.
+- [x] 100-node <100ms benchmark green.
+- [x] Cycle and depth-limit tests pass.
+- [x] Memoization proven by test.
