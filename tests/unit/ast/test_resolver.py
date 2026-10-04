@@ -19,7 +19,6 @@ def make_module(source: str, module_fqn: str = "test_pkg.test_mod") -> ModuleAST
 
 def test_resolve_local_function():
     mod = make_module("def f(): pass", module_fqn="pkg.mod")
-    mod.symbol_table = {"f": "pkg.mod.f"}
 
     index = ModuleIndex([mod])
     resolver = ImportResolver(index)
@@ -35,6 +34,16 @@ def test_resolve_builtin():
 
     res = resolver.resolve_name("len", mod)
     assert res == "len"
+
+
+def test_resolve_chain_builtin_not_resolved():
+    mod = make_module("", module_fqn="pkg.mod")
+    index = ModuleIndex([mod])
+    resolver = ImportResolver(index)
+
+    res = resolver.resolve_chain(["len"], mod)
+    assert res.fqn == "len"
+    assert res.resolved is False
 
 
 def test_extract_attribute_chain():
@@ -93,7 +102,18 @@ def test_self_method():
 
     res = resolver.resolve_chain(["self", "other"], mod)
     assert res.fqn == "self.other"
-    assert res.confidence == 0.5  # Or whatever the spec decides for low confidence
+    assert res.confidence == 0.5
+
+
+def test_resolve_method_chain_with_class():
+    mod = make_module("", module_fqn="app.main")
+    index = ModuleIndex([mod])
+    resolver = ImportResolver(index)
+
+    res = resolver.resolve_method_chain(["self", "other"], class_fqn="app.main.Client")
+    assert res.fqn == "app.main.Client.other"
+    assert res.confidence == 0.5
+    assert res.resolved is False
 
 
 def test_resolve_imported_call_re_export():

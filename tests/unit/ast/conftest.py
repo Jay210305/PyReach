@@ -11,7 +11,7 @@ import pytest
 
 from pyreach.ast.builder import ASTBuilder, ModuleAST
 from pyreach.ast.resolver import ModuleIndex
-from pyreach.ast.symbols import SymbolTableBuilder
+from pyreach.loaders.source import SourceFile
 
 
 @pytest.fixture
@@ -35,22 +35,11 @@ def module_index_from_dir():
 
     def _factory(path: Path) -> ModuleIndex:
         builder = ASTBuilder(module_root=path)
-        source_files = list(path.rglob("*.py"))
-
-        modules = []
-        for sf in source_files:
-            mod = builder.build_file(sf)
-            if mod:
-                modules.append(mod)
-
-        index = ModuleIndex(modules)
-
-        # Run symbol resolution for each module
-        for mod in modules:
-            sym_builder = SymbolTableBuilder(mod, index.get)
-            sym_builder.build()
-
-        return index
+        source_files = [
+            SourceFile(path=p, rel_path=p.relative_to(path)) for p in path.rglob("*.py")
+        ]
+        modules = builder.build_all(source_files)
+        return ModuleIndex(modules)
 
     return _factory
 

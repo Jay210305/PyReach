@@ -1,11 +1,12 @@
+import json
 from pathlib import Path
 
 import pytest
 
 from pyreach.db.connection import get_db_connection, initialize_database
-from pyreach.db.repositories import AdvisoryRepository
 from pyreach.exceptions import OSVError
 from pyreach.osv.importer import OSVImporter, sync_osv
+from pyreach.osv.mapper import VulnerabilityMapper
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "osv_records"
 
@@ -60,6 +61,71 @@ def test_incremental_skips_old(tmp_path: Path) -> None:
     # Second run with incremental skips all already modified records
     second_stats = importer.import_file(sample_jsonl)
     assert second_stats.imported == 0
+    assert second_stats.skipped_up_to_date > 0
+
+
+def test_incremental_persists_watermark(tmp_path: Path) -> None:
+    db_path = tmp_path / "osv.db"
+    initialize_database(db_path)
+    sample_jsonl = FIXTURES_DIR / "sample.jsonl"
+
+    importer = OSVImporter(db_path, incremental=True)
+    importer.import_file(sample_jsonl)
+
+    with get_db_connection(db_path) as conn:
+        row = conn.execute("SELECT value FROM sync_metadata WHERE key = 'last_sync';").fetchone()
+        assert row is not None
+        assert row["value"]
+
+
+def test_import_json_array(tmp_path: Path) -> None:
+    db_path = tmp_path / "osv.db"
+    array_file = tmp_path / "records.json"
+
+    records = [
+        {"id": "GHSA-0001", "affected": [{"package": {"name": "flask", "ecosystem": "PyPI"}}]},
+        {"id": "GHSA-0002", "affected": [{"package": {"name": "click", "ecosystem": "PyPI"}}]},
+    ]
+    array_file.write_text(json.dumps(records), encoding="utf-8")
+
+    stats = OSVImporter(db_path).import_file(array_file)
+    assert stats.imported == 2
+
+    with get_db_connection(db_path) as conn:
+        count = conn.execute("SELECT COUNT(*) FROM advisories;").fetchone()[0]
+        assert count == 2
+
+
+def test_malformed_record_without_id_counts_malformed(tmp_path: Path) -> None:
+    db_path = tmp_path / "osv.db"
+    no_id_file = tmp_path / "no_id.jsonl"
+    no_id_file.write_text(
+        '{"affected":[{"package":{"name":"flask","ecosystem":"PyPI"}}]}\n',
+        encoding="utf-8",
+    )
+
+    stats = OSVImporter(db_path).import_file(no_id_file)
+    assert stats.imported == 0
+    assert stats.skipped_malformed == 1
+    assert stats.skipped_ecosystem == 0
+
+
+def test_published_date_stored_as_date_only(tmp_path: Path) -> None:
+    db_path = tmp_path / "osv.db"
+    rec_file = tmp_path / "rec.jsonl"
+    rec_file.write_text(
+        '{"id":"GHSA-DATE","published":"2023-05-22T10:00:00Z",'
+        '"affected":[{"package":{"name":"flask","ecosystem":"PyPI"}}]}\n',
+        encoding="utf-8",
+    )
+
+    OSVImporter(db_path).import_file(rec_file)
+
+    with get_db_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT published_date FROM advisories WHERE osv_id = 'GHSA-DATE';"
+        ).fetchone()
+        assert row["published_date"] == "2023-05-22"
 
 
 def test_sync_osv_directory(tmp_path: Path) -> None:
@@ -102,14 +168,14 @@ def test_find_by_package_and_version(tmp_path: Path) -> None:
     importer.import_file(sample_jsonl)
 
     with get_db_connection(db_path) as conn:
-        repo = AdvisoryRepository(conn)
+        mapper = VulnerabilityMapper(conn)
         # requests 2.30.0 is affected by CVE-2023-32681 ([2.0.0, 2.31.0))
-        vulns_affected = repo.find_by_package_and_version("requests", "2.30.0")
+        vulns_affected = mapper.find_by_package_and_version("requests", "2.30.0")
         assert len(vulns_affected) == 1
         assert vulns_affected[0].cve_id == "CVE-2023-32681"
 
         # requests 2.31.0 is fixed
-        vulns_fixed = repo.find_by_package_and_version("requests", "2.31.0")
+        vulns_fixed = mapper.find_by_package_and_version("requests", "2.31.0")
         assert len(vulns_fixed) == 0
 
 

@@ -16,7 +16,7 @@ from pyreach.ast.builder import ASTBuilder, ModuleAST
 from pyreach.ast.resolver import ModuleIndex
 from pyreach.ast.symbols import SymbolTableBuilder
 from pyreach.callgraph.engine import CallGraphEngine
-from pyreach.reachability.analyzer import analyze_reachability, clear_cache
+from pyreach.reachability.analyzer import analyze_reachability, clear_cache, imported_packages
 from pyreach.reachability.entrypoints import EntryPointDetector
 from tests.fixtures.advisories import VULN_SYMBOL, stub_advisory
 
@@ -65,9 +65,11 @@ def test_scenario(tmp_path: Path, scenario: str, expected: str) -> None:
     graph = CallGraphEngine(index).build(modules)
     entries = EntryPointDetector(modules).detect()
     advisory = stub_advisory()
-    results = analyze_reachability(graph, entries, [advisory], max_depth=5)
+    results = analyze_reachability(
+        graph, entries, [advisory], max_depth=5, application_imports=imported_packages(modules)
+    )
 
-    result = results[VULN_SYMBOL]
+    result = results[(advisory.osv_id, VULN_SYMBOL)]
     assert result.status == expected, _diagnostics(sorted(graph.edges(data=True)), entries, result)
 
 
@@ -78,7 +80,10 @@ def test_linear_reachable_path_matches_chain(tmp_path: Path) -> None:
 
     graph = CallGraphEngine(index).build(modules)
     entries = EntryPointDetector(modules).detect()
-    result = analyze_reachability(graph, entries, [stub_advisory()], max_depth=5)[VULN_SYMBOL]
+    advisory = stub_advisory()
+    result = analyze_reachability(
+        graph, entries, [advisory], max_depth=5, application_imports=imported_packages(modules)
+    )[(advisory.osv_id, VULN_SYMBOL)]
 
     assert result.status == "REACHABLE"
     assert REACHABLE_PATH in result.paths
@@ -92,7 +97,14 @@ def test_not_reachable_scenarios_have_no_path(tmp_path: Path) -> None:
         modules, index = _run_ast_pipeline(project)
         graph = CallGraphEngine(index).build(modules)
         entries = EntryPointDetector(modules).detect()
-        result = analyze_reachability(graph, entries, [stub_advisory()], max_depth=5)[VULN_SYMBOL]
+        advisory = stub_advisory()
+        result = analyze_reachability(
+            graph,
+            entries,
+            [advisory],
+            max_depth=5,
+            application_imports=imported_packages(modules),
+        )[(advisory.osv_id, VULN_SYMBOL)]
         assert result.status == "NOT_REACHABLE", scenario
         assert result.paths == [], scenario
 
@@ -106,8 +118,11 @@ def test_linear_reachable_performance(tmp_path: Path) -> None:
     start = time.perf_counter()
     graph = CallGraphEngine(index).build(modules)
     entries = EntryPointDetector(modules).detect()
-    results = analyze_reachability(graph, entries, [stub_advisory()], max_depth=5)
+    advisory = stub_advisory()
+    results = analyze_reachability(
+        graph, entries, [advisory], max_depth=5, application_imports=imported_packages(modules)
+    )
     elapsed = time.perf_counter() - start
 
-    assert results[VULN_SYMBOL].status == "REACHABLE"
+    assert results[(advisory.osv_id, VULN_SYMBOL)].status == "REACHABLE"
     assert elapsed < 2.0, f"graph build + analysis took {elapsed:.3f}s"

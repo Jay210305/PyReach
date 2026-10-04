@@ -12,10 +12,9 @@ from typing import Literal
 
 import networkx as nx
 
-# mypy: disable-error-code="import-untyped"
 from pyreach.ast.builder import ModuleAST
 from pyreach.ast.resolver import ImportResolver, ModuleIndex
-from pyreach.callgraph.edges import CGEdge, EdgeType
+from pyreach.callgraph.edges import EdgeType, add_edge
 from pyreach.callgraph.nodes import CGNode, NodeType, add_cgnode
 
 logger = logging.getLogger(__name__)
@@ -24,9 +23,21 @@ Modifier = Literal["static", "class", "property", "none"]
 SENTINEL_DYNAMIC = "<DYNAMIC>"
 SENTINEL_UNRESOLVED = "<UNRESOLVED>"
 
+CONF_STATIC = 1.0
+CONF_DYNAMIC = 0.5
+CONF_UNRESOLVED = 0.3
+
 
 def _callable_fqn(module_fqn: str, name: str) -> str:
     return f"{module_fqn}.{name}" if module_fqn else name
+
+
+def _nested_fqn(enclosing_fqn: str, name: str) -> str:
+    return f"{enclosing_fqn}.<locals>.{name}"
+
+
+def _lambda_fqn(file_path: str, lineno: int) -> str:
+    return f"<lambda>:{file_path}:{lineno}"
 
 
 def _is_static_method(decorator_list: list[ast.AST]) -> bool:
@@ -63,8 +74,21 @@ def _resolve_decorator_modifier(decorator_list: list[ast.AST]) -> Modifier:
     return "none"
 
 
+@dataclass
+class _NodeMeta:
+    """Scoping metadata attached to a graph node (consumed by the edge pass)."""
+
+    file_path: str
+    line_number: int | None
+    class_fqn: str | None
+    parent_fqn: str | None
+    is_async: bool
+    modifier: Modifier
+    decorators: list[str]
+
+
 class NodeExtractor(ast.NodeVisitor):
-    """Extract CGNodes from a ModuleAST by walking top-level definitions.
+    """Extract CGNodes from a ModuleAST by walking definitions.
 
     FQN conventions (deterministic, deduplicated by FQN, first wins):
     - Module function ``foo`` in module ``m`` -> ``m.foo`` (FUNCTION).
@@ -73,16 +97,6 @@ class NodeExtractor(ast.NodeVisitor):
     - Nested function ``inner`` in ``m.outer`` -> ``m.outer.<locals>.inner``.
     - Lambda at ``rel_path:lineno`` -> ``<lambda>:rel_path:lineno`` (LAMBDA).
     - Duplicate FQNs (conditional defs, overloads) collapse to the first node.
-
-    Handles:
-    - Module-level FunctionDef/AsyncFunctionDef -> FUNCTION nodes
-    - ClassDef -> CLASS nodes
-    - Methods (FunctionDef inside ClassDef) -> METHOD nodes
-    - Lambda -> LAMBDA nodes with ``<lambda>:file:line`` FQN
-    - Nested functions -> ``enclosing.<locals>.name`` FQN
-    - Static/classmethod/property decorators -> modifier attribute
-    - Inheritance bases -> recorded as class metadata for S3-T4
-    - Decorators -> recorded for S3-T7 entry-point detection
     """
 
     def __init__(self, module: ModuleAST, graph: nx.DiGraph) -> None:
@@ -112,44 +126,38 @@ class NodeExtractor(ast.NodeVisitor):
         is_async: bool,
     ) -> None:
         modifier = _resolve_decorator_modifier(list(node.decorator_list))
-        # Determine enclosing context from the visitor stack
-        # ast.NodeVisitor doesn't track parent, so we use a simple approach:
-        # check if we're inside a ClassDef by looking at the path we've built
         enclosing_fqn = self._current_enclosing_fqn
+
         if enclosing_fqn is None:
-            # Module-level function (module FQN comes from S2-T4, never recomputed here)
             fqn = _callable_fqn(self.module.module_fqn, name)
             node_type: NodeType = "FUNCTION"
             class_fqn: str | None = None
             parent_fqn: str | None = None
-        else:
-            # Method inside a class
-            fqn = f"{enclosing_fqn}.{name}"
+        elif self._current_is_class:
+            fqn = _callable_fqn(enclosing_fqn, name)
             node_type = "METHOD"
             class_fqn = enclosing_fqn
             parent_fqn = enclosing_fqn
-
-        # Handle nested functions (enclosing is a function, not a class)
-        if enclosing_fqn is not None and not self._current_is_class:
-            # Nested function inside another function
-            fqn = f"{enclosing_fqn}.<locals>.{name}"
-            parent_fqn = enclosing_fqn
+        else:
+            fqn = _nested_fqn(enclosing_fqn, name)
+            node_type = "FUNCTION"
             class_fqn = None
+            parent_fqn = enclosing_fqn
 
         self._add_node(
-            fqn=fqn,
-            node_type=node_type,
-            file_path=self.module.file_path,
-            line_number=node.lineno,
-            class_fqn=class_fqn,
-            parent_fqn=parent_fqn,
-            is_async=is_async,
-            modifier=modifier,
-            decorators=[self._decorator_fqn(d) for d in node.decorator_list],
+            fqn,
+            node_type,
+            _NodeMeta(
+                file_path=self.module.file_path,
+                line_number=node.lineno,
+                class_fqn=class_fqn,
+                parent_fqn=parent_fqn,
+                is_async=is_async,
+                modifier=modifier,
+                decorators=[self._decorator_fqn(d) for d in node.decorator_list],
+            ),
         )
 
-        # Recurse into body but don't track enclosing for nested functions
-        # We need to track enclosing for nested functions
         old_enclosing = self._current_enclosing_fqn
         old_is_class = self._current_is_class
         self._current_enclosing_fqn = fqn
@@ -161,29 +169,18 @@ class NodeExtractor(ast.NodeVisitor):
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         fqn = _callable_fqn(self.module.module_fqn, node.name)
 
-        # Resolve bases via symbol table
-        bases: list[str] = []
-        for base in node.bases:
-            if isinstance(base, ast.Name):
-                bases.append(base.id)
-            elif isinstance(base, ast.Attribute):
-                bases.append(".".join(self._extract_attr_chain(base)))
-            else:
-                bases.append("")
-
-        decorators = [self._decorator_fqn(d) for d in node.decorator_list]
-
         self._add_node(
-            fqn=fqn,
-            node_type="CLASS",
-            file_path=self.module.file_path,
-            line_number=node.lineno,
-            class_fqn=None,
-            parent_fqn=None,
-            is_async=False,
-            modifier="none",
-            decorators=decorators,
-            bases=bases,
+            fqn,
+            "CLASS",
+            _NodeMeta(
+                file_path=self.module.file_path,
+                line_number=node.lineno,
+                class_fqn=None,
+                parent_fqn=None,
+                is_async=False,
+                modifier="none",
+                decorators=[self._decorator_fqn(d) for d in node.decorator_list],
+            ),
         )
 
         old_enclosing = self._current_enclosing_fqn
@@ -195,37 +192,31 @@ class NodeExtractor(ast.NodeVisitor):
         self._current_is_class = old_is_class
 
     def visit_Lambda(self, node: ast.Lambda) -> None:
-        # Lambda FQN: <lambda>:rel_path:lineno
-        rel_path = self.module.file_path
-        fqn = f"<lambda>:{rel_path}:{node.lineno}"
+        fqn = _lambda_fqn(self.module.file_path, node.lineno)
 
         self._add_node(
-            fqn=fqn,
-            node_type="LAMBDA",
-            file_path=self.module.file_path,
-            line_number=node.lineno,
-            class_fqn=None,
-            parent_fqn=self._current_enclosing_fqn,
-            is_async=False,
-            modifier="none",
-            decorators=[],
+            fqn,
+            "LAMBDA",
+            _NodeMeta(
+                file_path=self.module.file_path,
+                line_number=node.lineno,
+                class_fqn=None,
+                parent_fqn=self._current_enclosing_fqn,
+                is_async=False,
+                modifier="none",
+                decorators=[],
+            ),
         )
-        # Don't recurse into lambda body for nested definitions
-        # (lambdas can't contain nested defs anyway)
 
-    def _add_node(
-        self,
-        fqn: str,
-        node_type: NodeType,
-        file_path: str,
-        line_number: int | None,
-        class_fqn: str | None,
-        parent_fqn: str | None,
-        is_async: bool,
-        modifier: Modifier,
-        decorators: list[str],
-        bases: list[str] | None = None,
-    ) -> None:
+        old_enclosing = self._current_enclosing_fqn
+        old_is_class = self._current_is_class
+        self._current_enclosing_fqn = fqn
+        self._current_is_class = False
+        self.generic_visit(node)
+        self._current_enclosing_fqn = old_enclosing
+        self._current_is_class = old_is_class
+
+    def _add_node(self, fqn: str, node_type: NodeType, meta: _NodeMeta) -> None:
         if fqn in self._seen_fqns:
             logger.debug("Duplicate FQN %s in %s, skipping", fqn, self.module.module_fqn)
             return
@@ -233,27 +224,23 @@ class NodeExtractor(ast.NodeVisitor):
 
         node = CGNode(
             fqn=fqn,
-            file_path=file_path,
-            line_number=line_number,
+            file_path=meta.file_path,
+            line_number=meta.line_number,
             node_type=node_type,
         )
         self._extracted.append(node)
 
         add_cgnode(self.graph, node)
 
-        # Attach scoping metadata consumed by S3-T4
-        attrs: dict[str, object] = {
-            "node_type": node_type,
-            "file_path": file_path,
-            "line_number": line_number,
-            "class_fqn": class_fqn,
-            "parent_fqn": parent_fqn,
-            "is_async": is_async,
-            "modifier": modifier,
-            "decorators": decorators,
-            "bases": bases or [],
-        }
-        self.graph.nodes[fqn].update(attrs)
+        self.graph.nodes[fqn].update(
+            {
+                "class_fqn": meta.class_fqn,
+                "parent_fqn": meta.parent_fqn,
+                "is_async": meta.is_async,
+                "modifier": meta.modifier,
+                "decorators": meta.decorators,
+            }
+        )
 
     @staticmethod
     def _decorator_fqn(decorator: ast.AST) -> str:
@@ -286,34 +273,8 @@ class NodeExtractor(ast.NodeVisitor):
                 return []
         return chain
 
-    # NOTE: enclosing-context state lives on the instance (see __init__),
-    # never on the class, so parallel NodeExtractor instances cannot leak scope.
-
 
 _DYNAMIC_FUNCTION_NAMES = frozenset({"eval", "exec", "getattr", "setattr", "__import__", "apply"})
-
-_EDGE_TYPE_PRECEDENCE = {"STATIC": 3, "INHERITANCE": 2, "DYNAMIC": 1}
-
-
-def _add_graph_edge(
-    graph: nx.DiGraph, caller: str, callee: str, edge_type: EdgeType, confidence: float
-) -> None:
-    """Add an edge, keeping the winner on duplicates.
-
-    Precedence: higher confidence wins; on confidence ties the stronger type
-    wins (``STATIC`` > ``INHERITANCE`` > ``DYNAMIC``). ``DiGraph`` collapses
-    parallel edges with last-write-wins, so this guard is what keeps edge
-    insertion order-independent and deterministic.
-    """
-    existing = graph.get_edge_data(caller, callee)
-    if existing is not None:
-        old_key = (
-            float(existing.get("confidence", 0.0)),
-            _EDGE_TYPE_PRECEDENCE.get(str(existing.get("edge_type", "DYNAMIC")), 0),
-        )
-        if (confidence, _EDGE_TYPE_PRECEDENCE[edge_type]) <= old_key:
-            return
-    graph.add_edge(caller, callee, edge_type=edge_type, confidence=confidence)
 
 
 class EdgeExtractor(ast.NodeVisitor):
@@ -324,14 +285,6 @@ class EdgeExtractor(ast.NodeVisitor):
     with the outer scope. Calls directly in a class body are attributed to the
     class node; calls at module level are skipped (import-time code is not
     reachable from entry-point functions).
-
-    Target resolution order per call site: dynamic patterns (``eval``,
-    ``import_module``, ...) -> ``super()`` -> ``self``/``cls`` -> tracked
-    ``x = Class()`` instances -> ``ImportResolver`` -> same-module fallback ->
-    ``<DYNAMIC>``/``<UNRESOLVED>`` sentinels. Anything the resolver points at
-    outside the parsed corpus becomes a placeholder node so library calls stay
-    visible to reachability; bare builtins (``len``, ``print``) produce no edge
-    since they can never be vulnerable symbols.
     """
 
     def __init__(self, module: ModuleAST, graph: nx.DiGraph, resolver: ImportResolver) -> None:
@@ -341,15 +294,12 @@ class EdgeExtractor(ast.NodeVisitor):
         self._scope: list[tuple[str, bool]] = []
         self._instance_vars: dict[str, str] = {}
         self._saved_scopes: list[dict[str, str]] = []
-        self._edges: list[CGEdge] = []
 
-    def extract(self) -> list[CGEdge]:
+    def extract(self) -> None:
         self._scope.clear()
         self._instance_vars.clear()
         self._saved_scopes.clear()
-        self._edges.clear()
         self.visit(self.module.tree)
-        return list(self._edges)
 
     @property
     def _caller(self) -> str | None:
@@ -360,8 +310,20 @@ class EdgeExtractor(ast.NodeVisitor):
             return _callable_fqn(self.module.module_fqn, name)
         enclosing, is_class = self._scope[-1]
         if is_class:
-            return f"{enclosing}.{name}"
-        return f"{enclosing}.<locals>.{name}"
+            return _callable_fqn(enclosing, name)
+        return _nested_fqn(enclosing, name)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        if not self._scope:
+            for alias in node.names:
+                self._record_import(alias.name)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if not self._scope and node.module is not None:
+            self._record_import(node.module)
+
+    def _record_import(self, module_fqn: str) -> None:
+        add_edge(self.graph, self.module.module_fqn, module_fqn, "IMPORT", CONF_STATIC)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._visit_callable(node, node.name)
@@ -398,7 +360,7 @@ class EdgeExtractor(ast.NodeVisitor):
         self._scope.pop()
 
     def visit_Lambda(self, node: ast.Lambda) -> None:
-        fqn = f"<lambda>:{self.module.file_path}:{node.lineno}"
+        fqn = _lambda_fqn(self.module.file_path, node.lineno)
         self._scope.append((fqn, False))
         self.generic_visit(node)
         self._scope.pop()
@@ -427,28 +389,26 @@ class EdgeExtractor(ast.NodeVisitor):
         elif isinstance(func, ast.Attribute):
             self._resolve_attribute_call(caller, node, func)
         else:
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", CONF_DYNAMIC)
 
     def _resolve_name_call(self, caller: str, node: ast.Call, name: str) -> None:
         if name in _DYNAMIC_FUNCTION_NAMES:
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", CONF_DYNAMIC)
             return
         resolved = self.resolver.resolve_name(name, self.module)
         if resolved is not None:
             if resolved in self.graph:
-                self._record(caller, resolved, "STATIC", 1.0)
+                self._record(caller, resolved, "STATIC", CONF_STATIC)
             elif resolved == name and hasattr(builtins, name):
                 return
             else:
-                self._record(caller, self._ensure_placeholder(resolved), "STATIC", 1.0)
+                self._record(caller, self._ensure_placeholder(resolved), "STATIC", CONF_STATIC)
             return
         local = _callable_fqn(self.module.module_fqn, name)
         if local in self.graph:
-            self._record(caller, local, "STATIC", 1.0)
-        elif self._has_star_args(node):
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, local, "STATIC", CONF_STATIC)
         else:
-            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", 0.3)
+            self._fallback(caller, node)
 
     def _resolve_attribute_call(self, caller: str, node: ast.Call, func: ast.Attribute) -> None:
         inner = func.value
@@ -461,10 +421,10 @@ class EdgeExtractor(ast.NodeVisitor):
             return
         chain = ImportResolver.extract_attribute_chain(func)
         if not chain:
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", CONF_DYNAMIC)
             return
         if chain[-1] == "import_module":
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", CONF_DYNAMIC)
             return
         if chain[0] in ("self", "cls"):
             self._resolve_self_call(caller, node, chain)
@@ -477,41 +437,36 @@ class EdgeExtractor(ast.NodeVisitor):
             callee = (
                 target.fqn if target.fqn in self.graph else self._ensure_placeholder(target.fqn)
             )
-            self._record(caller, callee, "STATIC", 1.0)
+            self._record(caller, callee, "STATIC", CONF_STATIC)
         elif chain[0] in self.module.symbol_table or chain[0] in self.module.imports:
-            self._record(caller, self._ensure_placeholder(target.fqn), "STATIC", 1.0)
-        elif self._has_star_args(node):
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, self._ensure_placeholder(target.fqn), "STATIC", CONF_STATIC)
         else:
-            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", 0.3)
+            self._fallback(caller, node)
 
     def _resolve_self_call(self, caller: str, node: ast.Call, chain: list[str]) -> None:
         if len(chain) != 2:
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", CONF_DYNAMIC)
             return
         class_fqn = self._enclosing_class(caller)
         if class_fqn is None:
-            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", 0.3)
+            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", CONF_UNRESOLVED)
             return
-        found = self._lookup_in_hierarchy(class_fqn, chain[1])
-        if found is not None:
-            self._record(caller, found, "STATIC", 1.0)
-        elif self._has_star_args(node):
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
-        else:
-            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", 0.3)
+        self._resolve_method_call(caller, node, class_fqn, chain[1])
 
     def _resolve_instance_call(self, caller: str, node: ast.Call, chain: list[str]) -> None:
         if len(chain) != 2:
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", CONF_DYNAMIC)
             return
-        found = self._lookup_in_hierarchy(self._instance_vars[chain[0]], chain[1])
+        self._resolve_method_call(caller, node, self._instance_vars[chain[0]], chain[1])
+
+    def _resolve_method_call(
+        self, caller: str, node: ast.Call, class_fqn: str, method: str
+    ) -> None:
+        found = self._lookup_in_hierarchy(class_fqn, method)
         if found is not None:
-            self._record(caller, found, "STATIC", 1.0)
-        elif self._has_star_args(node):
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, found, "STATIC", CONF_STATIC)
         else:
-            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", 0.3)
+            self._fallback(caller, node)
 
     def _resolve_super_call(self, caller: str, node: ast.Call, method: str) -> None:
         class_fqn = self._enclosing_class(caller)
@@ -519,12 +474,15 @@ class EdgeExtractor(ast.NodeVisitor):
         for base in bases:
             found = self._lookup_in_hierarchy(base, method)
             if found is not None:
-                self._record(caller, found, "STATIC", 1.0)
+                self._record(caller, found, "STATIC", CONF_STATIC)
                 return
+        self._fallback(caller, node)
+
+    def _fallback(self, caller: str, node: ast.Call) -> None:
         if self._has_star_args(node):
-            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", 0.5)
+            self._record(caller, SENTINEL_DYNAMIC, "DYNAMIC", CONF_DYNAMIC)
         else:
-            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", 0.3)
+            self._record(caller, SENTINEL_UNRESOLVED, "DYNAMIC", CONF_UNRESOLVED)
 
     def _resolve_class_name(self, name: str) -> str | None:
         resolved = self.resolver.resolve_name(name, self.module)
@@ -594,26 +552,12 @@ class EdgeExtractor(ast.NodeVisitor):
                     "is_async": False,
                     "modifier": "none",
                     "decorators": [],
-                    "bases": [],
                 }
             )
         return fqn
 
     def _record(self, caller: str, callee: str, edge_type: EdgeType, confidence: float) -> None:
-        self._add_edge(caller, callee, edge_type, confidence)
-        caller_node = self.graph.nodes[caller].get("node") or CGNode(fqn=caller)
-        callee_node = self.graph.nodes[callee].get("node") or CGNode(fqn=callee)
-        self._edges.append(
-            CGEdge(
-                caller=caller_node,
-                callee=callee_node,
-                edge_type=edge_type,
-                confidence=confidence,
-            )
-        )
-
-    def _add_edge(self, caller: str, callee: str, edge_type: EdgeType, confidence: float) -> None:
-        _add_graph_edge(self.graph, caller, callee, edge_type, confidence)
+        add_edge(self.graph, caller, callee, edge_type, confidence)
 
     @staticmethod
     def _has_star_args(node: ast.Call) -> bool:
@@ -653,7 +597,7 @@ def _build_inheritance_edges(
             for base in node.bases:
                 base_fqn = _resolve_base_fqn(base, module, resolver, graph)
                 if base_fqn is not None and base_fqn != sub:
-                    _add_graph_edge(graph, sub, base_fqn, "INHERITANCE", 1.0)
+                    add_edge(graph, sub, base_fqn, "INHERITANCE", CONF_STATIC)
 
 
 @dataclass
@@ -686,35 +630,23 @@ class CallGraphEngine:
 
         Modules must carry S2 symbol tables for cross-module resolution;
         same-module calls additionally fall back to local node lookup.
-
-        Args:
-            modules: Iterable of ModuleAST objects from the AST pipeline.
-
-        Returns:
-            A NetworkX DiGraph with nodes and edges.
         """
         graph = nx.DiGraph()
         self._stats = EngineStats()
         self._resolver = ImportResolver(self.index)
         ordered = sorted(modules, key=lambda mod: mod.module_fqn)
 
-        # Add sentinel nodes for dynamic/unresolved calls
         for sentinel in (SENTINEL_DYNAMIC, SENTINEL_UNRESOLVED):
             if sentinel not in graph:
-                graph.add_node(sentinel, node_type="SENTINEL", is_sentinel=True)
+                graph.add_node(sentinel, is_sentinel=True)
 
-        # Node pass: extract all callable nodes
         for module in ordered:
             extractor = NodeExtractor(module, graph)
-            nodes = extractor.extract()
-            for node in nodes:
+            for node in extractor.extract():
                 self._update_stats(node.node_type)
 
-        # Inheritance pass must precede call resolution (self/super lookups
-        # follow INHERITANCE edges up the hierarchy).
         _build_inheritance_edges(ordered, graph, self._resolver)
 
-        # Edge pass: resolve call targets and add edges
         for module in ordered:
             EdgeExtractor(module, graph, self._resolver).extract()
 

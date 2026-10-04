@@ -1,6 +1,11 @@
 """Reachability analysis package."""
 
-from pyreach.reachability.analyzer import analyze_reachability, clear_cache
+from pyreach.reachability.analyzer import (
+    MAX_DEPTH,
+    analyze_reachability,
+    clear_cache,
+    imported_packages,
+)
 from pyreach.reachability.classifier import ReachabilityClassifier, SymbolContext
 from pyreach.reachability.contracts import (
     MAX_PATHS,
@@ -16,6 +21,7 @@ from pyreach.reachability.entrypoints import (
 
 __all__ = [
     "EntryPointDetector",
+    "MAX_DEPTH",
     "MAX_PATHS",
     "ReachabilityClassifier",
     "ReachabilityResult",
@@ -25,5 +31,6 @@ __all__ = [
     "analyze_reachability",
     "clear_cache",
     "detect_or_fail",
+    "imported_packages",
     "resolve_entry_points",
 ]

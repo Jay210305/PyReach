@@ -5,15 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+import networkx as nx
+
 from pyreach.exceptions import AnalysisError
-
-try:
-    import networkx as nx
-except ImportError:  # pragma: no cover
-    nx = None
-
-
-# mypy: disable-error-code="import-untyped,unused-ignore"
 
 
 def _coerce_optional_str(val: object) -> str | None:
@@ -75,10 +69,7 @@ class CGNode:
         )
 
 
-def add_cgnode(graph: object, node: CGNode) -> None:
-    if nx is None:  # pragma: no cover
-        raise AnalysisError("networkx not installed")
-    assert isinstance(graph, nx.DiGraph)
+def add_cgnode(graph: nx.DiGraph, node: CGNode) -> None:
     graph.add_node(
         node.fqn,
         node=node,

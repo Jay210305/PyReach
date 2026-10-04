@@ -3,12 +3,11 @@
 import json
 import sqlite3
 
-from pyreach.parsers.manifest import normalize_name
-from pyreach.parsers.osv_json import Vulnerability, is_version_affected
+from pyreach.osv.mapper import AffectedSymbol, Vulnerability
 
 
 class AdvisoryRepository:
-    """Repository handling persistence and querying of OSV advisories."""
+    """Repository handling persistence of OSV advisories."""
 
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
@@ -53,7 +52,7 @@ class AdvisoryRepository:
             "severity_level": advisory.severity_level,
             "summary": advisory.summary,
             "published_date": published_date,
-            "aliases": json.dumps(aliases or []),
+            "aliases": json.dumps(aliases if isinstance(aliases, list) else []),
             "modified_date": modified_date,
             "raw_json": raw_json,
         }
@@ -66,75 +65,34 @@ class AdvisoryRepository:
     def replace_symbols(
         self,
         advisory_id: int,
-        symbols: list[tuple[str, str | None, str | None]],
+        symbols: list[AffectedSymbol],
     ) -> None:
         """Replace all affected_symbols rows for the given advisory_id."""
         self._conn.execute("DELETE FROM affected_symbols WHERE advisory_id = ?;", (advisory_id,))
         insert_sql = """
             INSERT INTO affected_symbols (
-                advisory_id, symbol_fqn, version_introduced, version_fixed
+                advisory_id, symbol_fqn, version_introduced, version_fixed,
+                version_fixed_inclusive
             )
-            VALUES (?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?);
         """
-        seen: set[tuple[str, str | None, str | None]] = set()
-        for sym, intro, fixed in symbols:
-            key = (sym, intro, fixed)
+        seen: set[tuple[str, str | None, str | None, bool]] = set()
+        for symbol in symbols:
+            key = (
+                symbol.symbol_fqn,
+                symbol.version_introduced,
+                symbol.version_fixed,
+                symbol.version_fixed_inclusive,
+            )
             if key not in seen:
                 seen.add(key)
-                self._conn.execute(insert_sql, (advisory_id, sym, intro, fixed))
-
-    def find_by_package_and_version(self, package_name: str, version: str) -> list[Vulnerability]:
-        """Query advisories affecting a specific package and installed version."""
-        norm_pkg = normalize_name(package_name)
-        sql = "SELECT * FROM advisories WHERE package_name = ?;"
-        cursor = self._conn.execute(sql, (norm_pkg,))
-        rows = cursor.fetchall()
-        matching: list[Vulnerability] = []
-
-        for row in rows:
-            advisory_id = row["id"]
-            sym_cursor = self._conn.execute(
-                "SELECT symbol_fqn, version_introduced, version_fixed "
-                "FROM affected_symbols WHERE advisory_id = ?;",
-                (advisory_id,),
-            )
-            sym_rows = sym_cursor.fetchall()
-            is_affected = False
-            symbols: list[str] = []
-            intro_val: str | None = None
-            fixed_val: str | None = None
-
-            for sym_row in sym_rows:
-                s_fqn = sym_row["symbol_fqn"]
-                intro = sym_row["version_introduced"]
-                fixed = sym_row["version_fixed"]
-                if s_fqn not in symbols:
-                    symbols.append(s_fqn)
-                if intro_val is None and intro is not None:
-                    intro_val = intro
-                if fixed_val is None and fixed is not None:
-                    fixed_val = fixed
-
-                if is_version_affected(version, intro, fixed):
-                    is_affected = True
-
-            if not sym_rows:
-                is_affected = True
-                symbols = ["*"]
-
-            if is_affected:
-                matching.append(
-                    Vulnerability(
-                        osv_id=row["osv_id"],
-                        cve_id=row["cve_id"],
-                        package_name=row["package_name"],
-                        severity_score=row["severity_score"],
-                        severity_level=row["severity_level"],
-                        summary=row["summary"] or "",
-                        affected_symbols=symbols,
-                        version_introduced=intro_val,
-                        version_fixed=fixed_val,
-                    )
+                self._conn.execute(
+                    insert_sql,
+                    (
+                        advisory_id,
+                        symbol.symbol_fqn,
+                        symbol.version_introduced,
+                        symbol.version_fixed,
+                        int(symbol.version_fixed_inclusive),
+                    ),
                 )
-
-        return matching

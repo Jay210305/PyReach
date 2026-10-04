@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from pyreach.parsers.osv_json import Vulnerability
+from pyreach.osv.mapper import Vulnerability
 
 ReachabilityStatus = Literal["REACHABLE", "NOT_REACHABLE", "POTENTIALLY_REACHABLE"]
 

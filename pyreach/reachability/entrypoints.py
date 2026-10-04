@@ -12,7 +12,8 @@ Detection rules (union, deterministically sorted):
    plus functions called directly inside the block.
 3. Framework decorators:
    - FastAPI/Starlette: ``@app.get``/``.post``/``.put``/``.delete``/``.patch``
-     on an ``app``/``router``/``api`` binding.
+     on an ``app``/``router``/``api`` binding (including aliases such as
+     ``application = FastAPI()``).
    - Flask: ``@x.route`` (any binding).
    - Django: not auto-detected (too diverse); rely on ``-e``.
 4. Module-level ``asyncio.run(...)`` / ``uvicorn.run(...)`` -> module root plus
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 _FASTAPI_METHODS = frozenset({"get", "post", "put", "delete", "patch"})
 _FASTAPI_BINDINGS = frozenset({"app", "router", "api"})
+_FASTAPI_CLASS_FQNS = frozenset({"FastAPI", "fastapi.FastAPI", "fastapi.applications.FastAPI"})
 _FLASK_METHODS = frozenset({"route"})
 _RUNNER_FQNS = frozenset({"asyncio.run", "uvicorn.run"})
 
@@ -63,27 +65,51 @@ def _attr_chain(node: ast.AST) -> list[str]:
 
 
 def _decorator_chain(decorator: ast.AST) -> list[str]:
-    if isinstance(decorator, ast.Name):
-        return [decorator.id]
-    if isinstance(decorator, ast.Attribute):
-        return _attr_chain(decorator)
-    if isinstance(decorator, ast.Call):
-        return _decorator_chain(decorator.func)
+    current: ast.AST = decorator
+    while isinstance(current, ast.Call):
+        current = current.func
+    if isinstance(current, ast.Name):
+        return [current.id]
+    if isinstance(current, ast.Attribute):
+        return _attr_chain(current)
     return []
 
 
-def _is_framework_decorator(decorator: ast.AST) -> bool:
+def _is_framework_decorator(decorator: ast.AST, fastapi_bindings: frozenset[str]) -> bool:
     chain = _decorator_chain(decorator)
     if len(chain) < 2:
         return False
     method = chain[-1]
     binding = chain[-2]
     if method in _FASTAPI_METHODS:
-        return binding in _FASTAPI_BINDINGS
+        return binding in fastapi_bindings
     return method in _FLASK_METHODS
 
 
+def _fastapi_instance_names(module: ModuleAST) -> set[str]:
+    """Names bound to a ``FastAPI()`` instance (directly or via an import alias)."""
+    names: set[str] = set()
+    for node in ast.walk(module.tree):
+        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)):
+            continue
+        func = node.value.func
+        if not isinstance(func, ast.Name):
+            continue
+        resolved = module.symbol_table.get(func.id, func.id)
+        if resolved not in _FASTAPI_CLASS_FQNS:
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                names.add(target.id)
+    return names
+
+
 def _is_main_block(node: ast.If) -> bool:
+    """Return True if *node* is ``if __name__ == "__main__":``.
+
+    ``ast.Constant`` normalizes both quote styles on Python 3.10+, so no
+    ``literal_eval`` pass is needed.
+    """
     test = node.test
     if not (isinstance(test, ast.Compare) and isinstance(test.left, ast.Name)):
         return False
@@ -92,9 +118,17 @@ def _is_main_block(node: ast.If) -> bool:
     if not isinstance(test.ops[0], ast.Eq):
         return False
     comparator = test.comparators[0]
-    # ast.Constant normalizes both 'single' and "double" quotes, so no
-    # literal_eval pass is needed on Python 3.10+.
     return isinstance(comparator, ast.Constant) and comparator.value == "__main__"
+
+
+def _callable_name(node: ast.AST) -> str | None:
+    """Return the trailing name of a ``Name`` or ``Attribute`` call target."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        chain = _attr_chain(node)
+        return chain[-1] if chain else None
+    return None
 
 
 def _runner_target(call: ast.Call) -> str | None:
@@ -104,12 +138,7 @@ def _runner_target(call: ast.Call) -> str | None:
     arg = call.args[0]
     if isinstance(arg, ast.Call):
         arg = arg.func
-    if isinstance(arg, ast.Name):
-        return arg.id
-    if isinstance(arg, ast.Attribute):
-        chain = _attr_chain(arg)
-        return chain[-1] if chain else None
-    return None
+    return _callable_name(arg)
 
 
 def _is_runner_call(call: ast.Call) -> bool:
@@ -128,6 +157,7 @@ class _EntryVisitor(ast.NodeVisitor):
         self.module = module
         self.entries: set[str] = set()
         self._scope: list[str] = []
+        self._fastapi_bindings = _FASTAPI_BINDINGS | frozenset(_fastapi_instance_names(module))
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._visit_callable(node)
@@ -139,7 +169,7 @@ class _EntryVisitor(ast.NodeVisitor):
         fqn = _fqn(self.module.module_fqn, *self._scope, node.name)
         if not self._scope and node.name == "main":
             self.entries.add(fqn)
-        if any(_is_framework_decorator(d) for d in node.decorator_list):
+        if any(_is_framework_decorator(d, self._fastapi_bindings) for d in node.decorator_list):
             self.entries.add(fqn)
         self._scope.append(node.name)
         self.generic_visit(node)
@@ -152,18 +182,26 @@ class _EntryVisitor(ast.NodeVisitor):
 
 
 def _detect_module(module: ModuleAST) -> set[str]:
+    tree = module.tree
+    if not isinstance(tree, ast.Module):
+        return set()
+
     entries: set[str] = set()
 
     visitor = _EntryVisitor(module)
-    visitor.visit(module.tree)
+    visitor.visit(tree)
     entries.update(visitor.entries)
 
-    for stmt in ast.walk(module.tree):
+    for stmt in tree.body:
         if isinstance(stmt, ast.If) and _is_main_block(stmt):
             entries.add(_fqn(module.module_fqn, "__main__"))
             for call in ast.walk(stmt):
                 if isinstance(call, ast.Call):
-                    target = _runner_target(call) if _is_runner_call(call) else _direct_call(call)
+                    target = (
+                        _runner_target(call)
+                        if _is_runner_call(call)
+                        else _callable_name(call.func)
+                    )
                     if target is not None:
                         entries.add(_fqn(module.module_fqn, target))
         elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
@@ -174,16 +212,6 @@ def _detect_module(module: ModuleAST) -> set[str]:
                     entries.add(_fqn(module.module_fqn, target))
 
     return entries
-
-
-def _direct_call(call: ast.Call) -> str | None:
-    func = call.func
-    if isinstance(func, ast.Name):
-        return func.id
-    if isinstance(func, ast.Attribute):
-        chain = _attr_chain(func)
-        return chain[-1] if chain else None
-    return None
 
 
 class EntryPointDetector:
@@ -236,6 +264,7 @@ def detect_or_fail(
     modules: Iterable[ModuleAST],
     overrides: list[str] | None = None,
     allow_empty: bool = False,
+    known_fqns: set[str] | None = None,
 ) -> list[str]:
     """Detect entry points and merge overrides, raising on an empty result.
 
@@ -244,7 +273,7 @@ def detect_or_fail(
     storm. ``allow_empty=True`` bypasses the check (used by tests).
     """
     detected = EntryPointDetector(modules).detect()
-    resolved = resolve_entry_points(detected, list(overrides or []), [])
+    resolved = resolve_entry_points(detected, list(overrides or []), [], known_fqns)
     if not resolved and not allow_empty:
         raise ConfigError(_NO_ENTRY_POINTS_MSG)
     return resolved

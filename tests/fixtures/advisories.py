@@ -1,13 +1,13 @@
 """Deterministic stub advisory source for integration tests.
 
-Provides a single synthetic :class:`~pyreach.parsers.osv_json.Vulnerability`
+Provides a single synthetic :class:`~pyreach.osv.mapper.Vulnerability`
 so reachability scenarios never depend on real CVE data or the network. The
 advisory points at ``vuln_lib.risky``, the vulnerable function in the synthetic
 ``vuln_lib`` stub package used by every project under
 ``tests/fixtures/projects/``.
 """
 
-from pyreach.parsers.osv_json import Vulnerability
+from pyreach.osv.mapper import Vulnerability
 
 VULN_SYMBOL = "vuln_lib.risky"
 

@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS affected_symbols (
     symbol_fqn TEXT NOT NULL,  -- e.g., "requests.sessions.Session.request"
     version_introduced TEXT,
     version_fixed TEXT,
+    -- 0 = fixed (exclusive upper bound), 1 = last_affected (inclusive)
+    version_fixed_inclusive INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (advisory_id) REFERENCES advisories(id) ON DELETE CASCADE
 );
 
@@ -121,3 +123,12 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 
 INSERT OR IGNORE INTO schema_version (version) VALUES (1);
+
+-- ============================================================
+-- Sync Metadata
+-- Key/value store for importer bookkeeping (e.g. last sync watermark).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS sync_metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);

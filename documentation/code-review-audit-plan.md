@@ -20,10 +20,10 @@ been presented; a fix pass does not unblock the next slice unless the user says 
 
 | # | Slice | Paths | Spec source | Status |
 |---|-------|-------|-------------|--------|
-| 1 | Data foundation | `pyreach/parsers/ pyreach/osv/ pyreach/db/` | `documentation/implementation/sprint-1-data-foundation/` | [ ] |
-| 2 | AST engine | `pyreach/ast/ pyreach/loaders/` | `documentation/implementation/sprint-2-ast-engine/` | [ ] |
-| 3 | Call graph | `pyreach/callgraph/` | `documentation/implementation/sprint-3-callgraph-reachability/S3-T1..T4` | [ ] |
-| 4 | Reachability | `pyreach/reachability/` | `documentation/implementation/sprint-3-callgraph-reachability/S3-T5..T8` | [ ] |
+| 1 | Data foundation | `pyreach/parsers/ pyreach/osv/ pyreach/db/` | `documentation/implementation/sprint-1-data-foundation/` | [x] |
+| 2 | AST engine | `pyreach/ast/ pyreach/loaders/` | `documentation/implementation/sprint-2-ast-engine/` | [x] |
+| 3 | Call graph | `pyreach/callgraph/` | `documentation/implementation/sprint-3-callgraph-reachability/S3-T1..T4` | [x] |
+| 4 | Reachability | `pyreach/reachability/` | `documentation/implementation/sprint-3-callgraph-reachability/S3-T5..T8` | [x] |
 | 5 | Output + CLI | `pyreach/output/ pyreach/cli.py pyreach/config.py` | `documentation/implementation/sprint-4-sarif-cli/` | [ ] |
 | 6 | Cross-cutting | `pyreach/exceptions.py pyreach/logger.py` | `AGENTS.md` §§11-12 (no task spec; Spec axis reports "no spec available") | [ ] |
 

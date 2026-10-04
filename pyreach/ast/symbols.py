@@ -1,6 +1,7 @@
 import ast
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 from pyreach.ast.builder import ModuleAST
@@ -25,7 +26,6 @@ class SymbolTableBuilder(ast.NodeVisitor):
         self._visited_modules.add(self.module.module_fqn)
         self.visit(self.module.tree)
 
-        # Populate module dicts
         self.module.symbol_table = {name: entry.fqn for name, entry in self.symbols.items()}
         for name, entry in self.symbols.items():
             if entry.kind in ("module", "name", "star"):
@@ -33,41 +33,60 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
         return self.module.symbol_table
 
+    def _is_package_module(self) -> bool:
+        return Path(self.module.file_path).name == "__init__.py"
+
+    def _package_fqn(self) -> str:
+        """Return the FQN of the package containing this module.
+
+        A package ``__init__.py`` has already been stripped to its package FQN
+        by the builder, so its FQN *is* the package. For a regular module the
+        package is the FQN minus the trailing module leaf.
+        """
+        fqn = self.module.module_fqn
+        if self._is_package_module():
+            return fqn
+        if not fqn:
+            return ""
+        return ".".join(fqn.split(".")[:-1])
+
+    def _resolve_level(self, level: int, module: str | None) -> str:
+        if level == 0:
+            return module or ""
+
+        package = self._package_fqn()
+        parts = package.split(".") if package else []
+        drop = level - 1
+        if drop > 0:
+            parts = parts[:-drop] if drop < len(parts) else []
+        base = ".".join(parts)
+
+        if module:
+            return f"{base}.{module}" if base else module
+        return base
+
     def visit_Import(self, node: ast.Import) -> None:
+        """Bind imported names.
+
+        ``import a.b`` binds only the top-level name ``a`` but also records the
+        full dotted path ``a.b`` so attribute chains can be resolved (S2-T5 §5.2).
+        """
         for alias in node.names:
             if alias.asname:
                 self.symbols[alias.asname] = SymbolEntry(
                     local_name=alias.asname, fqn=alias.name, kind="module", import_node=node
                 )
             else:
-                top_level_name = alias.name.split(".")[0]
-                self.symbols[top_level_name] = SymbolEntry(
-                    local_name=top_level_name,
-                    fqn=top_level_name,  # By design, a->a
-                    kind="module",
-                    import_node=node,
+                top_level = alias.name.split(".")[0]
+                self.symbols[top_level] = SymbolEntry(
+                    local_name=top_level, fqn=top_level, kind="module", import_node=node
                 )
-
-    def _resolve_level(self, level: int, module: str | None) -> str:
-        if level == 0:
-            return module or ""
-
-        parts = self.module.module_fqn.split(".")
-        if self.module.module_fqn:
-            # drop `level` trailing parts from the current module's FQN
-            drop_count = level
-            if drop_count > 0:
-                parts = parts[:-drop_count] if drop_count < len(parts) else []
-            base = ".".join(parts)
-        else:
-            base = ""
-
-        if module:
-            return f"{base}.{module}" if base else module
-        return base
+                if "." in alias.name:
+                    self.symbols[alias.name] = SymbolEntry(
+                        local_name=alias.name, fqn=alias.name, kind="module", import_node=node
+                    )
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        # level is 0 for absolute, >0 for relative
         base_module = self._resolve_level(node.level, node.module)
 
         for alias in node.names:
@@ -84,7 +103,7 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
     def _handle_star_import(self, base_module: str, node: ast.ImportFrom) -> None:
         if base_module in self._visited_modules:
-            return  # Circular import detected
+            return
 
         target_mod = self.loader(base_module)
         if not target_mod:
@@ -95,12 +114,10 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
         self._visited_modules.add(base_module)
 
-        # Determine names to import
         exported_names: list[str] = []
         has_all = False
 
         if isinstance(target_mod.tree, ast.Module):
-            # Look for __all__
             for stmt in target_mod.tree.body:
                 if isinstance(stmt, ast.Assign):
                     for target in stmt.targets:
@@ -112,16 +129,14 @@ class SymbolTableBuilder(ast.NodeVisitor):
                                 has_all = True
 
             if not has_all:
-                # Fallback heuristic
                 for stmt in target_mod.tree.body:
                     if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                         if not stmt.name.startswith("_"):
                             exported_names.append(stmt.name)
                     elif isinstance(stmt, ast.Assign):
                         for target in stmt.targets:
-                            if isinstance(target, ast.Name):
-                                if not target.id.startswith("_"):
-                                    exported_names.append(target.id)
+                            if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                                exported_names.append(target.id)
 
         for name in exported_names:
             self.symbols[name] = SymbolEntry(
@@ -155,7 +170,6 @@ class SymbolTableBuilder(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    # Only walk module scope for imports — stop at function/class bodies.
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         pass
 
@@ -163,4 +177,4 @@ class SymbolTableBuilder(ast.NodeVisitor):
         pass
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        pass  # Do not descend
+        pass

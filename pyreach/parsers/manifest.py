@@ -8,6 +8,7 @@ logic.
 """
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,8 @@ from typing import Protocol, runtime_checkable
 from packaging.requirements import InvalidRequirement, Requirement
 
 from pyreach.exceptions import ConfigError, ParseError
+
+logger = logging.getLogger(__name__)
 
 SOURCE_REQUIREMENTS_TXT = "requirements.txt"
 SOURCE_PIPFILE_LOCK = "Pipfile.lock"
@@ -58,8 +61,6 @@ class Dependency:
             )
 
 
-#: Parsers return a plain list of dependencies. The alias keeps future typing
-#: migrations cheap without changing the runtime contract.
 ParserResult = list[Dependency]
 
 
@@ -78,7 +79,7 @@ class ManifestParser(Protocol):
 
     def supports(self, path: Path) -> bool: ...
 
-    def parse(self, path: Path) -> list[Dependency]: ...
+    def parse(self, path: Path) -> ParserResult: ...
 
 
 def _extract_version(req: Requirement) -> str:
@@ -129,12 +130,25 @@ def _parse_non_pypi(line: str) -> tuple[str, str] | None:
             return normalize_name(parts[0]), parts[1]
         return normalize_name(archive_base), ""
 
-    # Local directory or relative/absolute path
     if clean_line.startswith((".", "/", "\\")) or ("/" in clean_line or "\\" in clean_line):
         if filename and re.match(r"^[a-zA-Z0-9_.-]+$", filename):
             return normalize_name(filename), ""
 
     return None
+
+
+def _add_non_pypi(
+    dependencies: dict[str, Dependency],
+    parsed: tuple[str, str] | None,
+) -> None:
+    """Record a non-PyPI dependency parsed by :func:`_parse_non_pypi`."""
+    if parsed:
+        name, version = parsed
+        dependencies[name] = Dependency(
+            name=name,
+            version=version,
+            source=SOURCE_REQUIREMENTS_TXT,
+        )
 
 
 class RequirementsTxtParser:
@@ -149,7 +163,7 @@ class RequirementsTxtParser:
         """Return True if path represents a requirements.txt file."""
         return path.name == SOURCE_REQUIREMENTS_TXT
 
-    def parse(self, path: Path) -> list[Dependency]:
+    def parse(self, path: Path) -> ParserResult:
         """Parse requirements.txt into a list of normalized Dependency objects.
 
         Raises:
@@ -173,7 +187,12 @@ class RequirementsTxtParser:
                 continue
 
             first_token = line.split(maxsplit=1)[0]
-            if first_token in {"-c", "-f", "-i", "-r"} or any(
+            if first_token in {"-r", "--requirement"} or first_token.startswith("--requirement="):
+                logger.warning(
+                    "Nested requirement file %r skipped (bounded recursion not implemented)", line
+                )
+                continue
+            if first_token in {"-c", "-f", "-i"} or any(
                 first_token == opt or first_token.startswith(f"{opt}=")
                 for opt in (
                     "--index-url",
@@ -185,33 +204,18 @@ class RequirementsTxtParser:
                     "--no-binary",
                     "--only-binary",
                     "--constraint",
-                    "--requirement",
                 )
             ):
                 continue
 
             if first_token in {"-e", "--editable"} or line.startswith(("-e ", "--editable ")):
                 if self.include_non_pypi:
-                    parsed = _parse_non_pypi(line)
-                    if parsed:
-                        name, ver = parsed
-                        dependencies[name] = Dependency(
-                            name=name,
-                            version=ver,
-                            source=SOURCE_REQUIREMENTS_TXT,
-                        )
+                    _add_non_pypi(dependencies, _parse_non_pypi(line))
                 continue
 
             if line.startswith(("http://", "https://", "ftp://", "git+", "hg+", "svn+", "bzr+")):
                 if self.include_non_pypi:
-                    parsed = _parse_non_pypi(line)
-                    if parsed:
-                        name, ver = parsed
-                        dependencies[name] = Dependency(
-                            name=name,
-                            version=ver,
-                            source=SOURCE_REQUIREMENTS_TXT,
-                        )
+                    _add_non_pypi(dependencies, _parse_non_pypi(line))
                 continue
 
             try:
@@ -220,12 +224,7 @@ class RequirementsTxtParser:
                 parsed = _parse_non_pypi(line)
                 if parsed:
                     if self.include_non_pypi:
-                        name, ver = parsed
-                        dependencies[name] = Dependency(
-                            name=name,
-                            version=ver,
-                            source=SOURCE_REQUIREMENTS_TXT,
-                        )
+                        _add_non_pypi(dependencies, parsed)
                     continue
                 raise ParseError(f"Malformed requirement in {path}: {line!r}") from exc
 
@@ -281,7 +280,7 @@ class PipfileLockParser:
         """Return True if path represents a Pipfile.lock file."""
         return path.name == SOURCE_PIPFILE_LOCK
 
-    def parse(self, path: Path) -> list[Dependency]:
+    def parse(self, path: Path) -> ParserResult:
         """Parse Pipfile.lock into a list of normalized Dependency objects.
 
         Raises:
@@ -343,14 +342,14 @@ class PipfileLockParser:
 
 
 def select_manifest_parser(project_root: Path) -> ManifestParser | None:
-    """Select the appropriate manifest parser for a project root directory.
+    """Select a manifest parser by asking each candidate whether it supports a file.
 
     Prefers requirements.txt, falls back to Pipfile.lock, or returns None.
     """
-    req_path = project_root / SOURCE_REQUIREMENTS_TXT
-    if req_path.is_file():
-        return RequirementsTxtParser()
-    pip_path = project_root / SOURCE_PIPFILE_LOCK
-    if pip_path.is_file():
-        return PipfileLockParser()
+    if not project_root.is_dir():
+        return None
+    for parser in (RequirementsTxtParser(), PipfileLockParser()):
+        for path in project_root.iterdir():
+            if path.is_file() and parser.supports(path):
+                return parser
     return None

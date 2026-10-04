@@ -47,6 +47,14 @@ def test_relative_package_imports(opened_project: Path, module_index_from_dir):
     assert res.fqn == "relative_pkg.sibling.utils"
 
 
+def test_relative_package_init_imports(opened_project: Path, module_index_from_dir):
+    index = module_index_from_dir(opened_project)
+    init_mod = index.get("relative_pkg")
+    assert init_mod is not None
+    assert "utils" in init_mod.symbol_table
+    assert init_mod.symbol_table["utils"] == "relative_pkg.sibling.utils"
+
+
 def test_star_import_names(opened_project: Path, module_index_from_dir):
     index = module_index_from_dir(opened_project)
     mod = index.get("star_import")

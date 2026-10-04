@@ -6,10 +6,12 @@ from pyreach.ast.builder import ModuleAST
 from pyreach.ast.symbols import SymbolTableBuilder
 
 
-def make_module(source: str, module_fqn: str = "test_pkg.test_mod") -> ModuleAST:
+def make_module(
+    source: str, module_fqn: str = "test_pkg.test_mod", file_path: str = "dummy.py"
+) -> ModuleAST:
     tree = ast.parse(source)
     return ModuleAST(
-        file_path="dummy.py", module_fqn=module_fqn, tree=tree, symbol_table={}, imports={}
+        file_path=file_path, module_fqn=module_fqn, tree=tree, symbol_table={}, imports={}
     )
 
 
@@ -33,8 +35,7 @@ def test_import_dotted():
     builder = SymbolTableBuilder(mod, lambda x: None)
     symbols = builder.build()
     assert symbols["a"] == "a"
-    # Document rule: module_binding for a.b.c should probably be resolvable
-    # In symbols dict we just want 'a' -> 'a'
+    assert symbols["a.b.c"] == "a.b.c"
 
 
 def test_from_import():
@@ -70,6 +71,17 @@ def test_relative_import_no_module():
     builder = SymbolTableBuilder(mod, lambda x: None)
     symbols = builder.build()
     assert symbols["sibling"] == "sibling"
+
+
+def test_relative_import_in_init():
+    mod = make_module(
+        "from .sibling import utils",
+        module_fqn="relative_pkg",
+        file_path="relative_pkg/__init__.py",
+    )
+    builder = SymbolTableBuilder(mod, lambda x: None)
+    symbols = builder.build()
+    assert symbols["utils"] == "relative_pkg.sibling.utils"
 
 
 def test_star_import_with_all():

@@ -25,6 +25,7 @@ htmlcov/
 .tox/
 .nox/
 coverage.json
+*,cover
 
 # Type checking / lint caches
 .mypy_cache/

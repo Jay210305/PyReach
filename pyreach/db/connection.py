@@ -28,9 +28,12 @@ def get_db_connection(db_path: str | Path) -> Generator[sqlite3.Connection, None
     try:
         yield conn
         conn.commit()
-    except Exception as exc:
+    except sqlite3.Error as exc:
         conn.rollback()
         raise DatabaseError(f"Database operation failed: {exc}") from exc
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 

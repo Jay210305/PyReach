@@ -2,7 +2,7 @@
 
 import itertools
 
-from pyreach.parsers.osv_json import Vulnerability
+from pyreach.osv.mapper import Vulnerability
 from pyreach.reachability.classifier import ReachabilityClassifier, SymbolContext
 from pyreach.reachability.contracts import ReachabilityResult, TraversalOutcome
 
@@ -63,13 +63,19 @@ def test_no_path_no_dynamic() -> None:
 
 
 def test_dynamic_forces_potential() -> None:
-    result = classifier.classify(_evidence(), _ctx(dynamic_in_chain=True))
+    result = classifier.classify(_evidence(), _ctx(package_imported=True, dynamic_in_chain=True))
     assert result.status == "POTENTIALLY_REACHABLE"
     assert "Dynamic" in result.reasoning
 
 
 def test_package_not_imported() -> None:
     result = classifier.classify(_evidence(), _ctx(package_imported=False, exact_node_exists=False))
+    assert result.status == "NOT_REACHABLE"
+    assert "package not imported" in result.reasoning
+
+
+def test_package_not_imported_dynamic_elsewhere() -> None:
+    result = classifier.classify(_evidence(), _ctx(package_imported=False, dynamic_in_chain=True))
     assert result.status == "NOT_REACHABLE"
     assert "package not imported" in result.reasoning
 
@@ -81,7 +87,7 @@ def test_package_imported_unresolved() -> None:
 
 
 def test_eval_in_chain() -> None:
-    result = classifier.classify(_evidence(encountered_dynamic=True), _ctx())
+    result = classifier.classify(_evidence(encountered_dynamic=True), _ctx(package_imported=True))
     assert result.status == "POTENTIALLY_REACHABLE"
 
 
@@ -103,8 +109,12 @@ def test_never_false_negative_matrix() -> None:
             max_depth_exceeded=depth,
         )
         result = classifier.classify(_evidence(), ctx)
-        # NOT_REACHABLE only when the analysis is fully certain (R2).
-        certain = not dynamic and not unresolved and (not package_imported or exact)
+        # NOT_REACHABLE only when the analysis is fully certain (R2). An
+        # unimported package is NOT_REACHABLE regardless of dynamic edges
+        # elsewhere (matrix row 4).
+        certain = (not package_imported and not unresolved) or (
+            package_imported and exact and not dynamic and not unresolved
+        )
         expected = "NOT_REACHABLE" if certain else "POTENTIALLY_REACHABLE"
         assert result.status == expected, (package_imported, exact, dynamic, unresolved, depth)
 

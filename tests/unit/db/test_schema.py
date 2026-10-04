@@ -17,6 +17,7 @@ EXPECTED_TABLES = {
     "reachability_results",
     "file_hashes",
     "schema_version",
+    "sync_metadata",
 }
 
 EXPECTED_INDEXES = {

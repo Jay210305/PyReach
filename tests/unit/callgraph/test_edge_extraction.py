@@ -6,6 +6,7 @@ import networkx as nx
 
 from pyreach.ast.builder import ModuleAST
 from pyreach.ast.resolver import ImportResolver, ModuleIndex
+from pyreach.callgraph.edges import add_edge
 from pyreach.callgraph.engine import CallGraphEngine, EdgeExtractor
 
 
@@ -113,11 +114,10 @@ def test_confidence_precedence() -> None:
     mod = _make_module("def f():\n    pass\n", "test")
     engine = CallGraphEngine(ModuleIndex([mod]))
     graph = engine.build([mod])
-    extractor = EdgeExtractor(mod, graph, ImportResolver(engine.index))
-    extractor._add_edge("test.f", "test.g", "DYNAMIC", 0.5)
-    extractor._add_edge("test.f", "test.g", "STATIC", 1.0)
+    add_edge(graph, "test.f", "test.g", "DYNAMIC", 0.5)
+    add_edge(graph, "test.f", "test.g", "STATIC", 1.0)
     assert _edge_data(graph, "test.f", "test.g")["edge_type"] == "STATIC"
-    extractor._add_edge("test.f", "test.g", "DYNAMIC", 0.5)
+    add_edge(graph, "test.f", "test.g", "DYNAMIC", 0.5)
     assert _edge_data(graph, "test.f", "test.g")["edge_type"] == "STATIC"
 
 
@@ -495,3 +495,24 @@ def test_direct_bases_missing_class_empty() -> None:
     graph = engine.build([mod])
     extractor = EdgeExtractor(mod, graph, ImportResolver(engine.index))
     assert extractor._direct_bases("nope.Missing") == []
+
+
+def test_module_import_edge() -> None:
+    mod = _make_module("import os\nimport a.b.c\nfrom x import y\n", "test")
+    graph = _build_graph([mod])
+    assert _edge_data(graph, "test", "os")["edge_type"] == "IMPORT"
+    assert _edge_data(graph, "test", "a.b.c")["edge_type"] == "IMPORT"
+    assert _edge_data(graph, "test", "x")["edge_type"] == "IMPORT"
+
+
+def test_import_inside_function_not_tracked() -> None:
+    mod = _make_module("def f():\n    import os\n", "test")
+    graph = _build_graph([mod])
+    assert graph.get_edge_data("test", "os") is None
+
+
+def test_subscript_base_no_inheritance_edge() -> None:
+    mod = _make_module("class Derived(Generic[T]):\n    pass\n", "test")
+    graph = _build_graph([mod])
+    assert "test.Derived" in graph.nodes
+    assert graph.number_of_edges() == 0

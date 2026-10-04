@@ -1,6 +1,7 @@
 """Tests for pyreach.loaders.packages — PackageResolver and InstalledPackage."""
 
 import json
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -157,6 +158,25 @@ class TestPackageResolver:
         assert pkg.name == "editable-pkg"
         assert pkg.location == src_dir.resolve()
 
+    def test_editable_install_egg_link(self, tmp_path: Path) -> None:
+        site = tmp_path / "site-packages"
+        site.mkdir()
+        src_dir = tmp_path / "src" / "legacy_editable"
+        src_dir.mkdir(parents=True)
+
+        _create_mock_distribution(
+            site,
+            "legacy_pkg",
+            "1.0.0",
+            top_level=["legacy_pkg"],
+        )
+        (site / "legacy_pkg.egg-link").write_text(f"{src_dir}\n", encoding="utf-8")
+
+        resolver = PackageResolver(search_paths=[site])
+        pkg = resolver.resolve("legacy-pkg")
+        assert pkg is not None
+        assert pkg.location == src_dir.resolve()
+
     def test_resolve_all_mixed(self, tmp_path: Path) -> None:
         site = tmp_path / "site-packages"
         site.mkdir()
@@ -212,7 +232,12 @@ class TestDetectSitePackages:
         assert len(found) >= 1
         assert site.resolve() in [p.resolve() for p in found]
 
-    def test_detect_no_venv_returns_empty(self, tmp_path: Path) -> None:
+    def test_detect_no_venv_falls_back_to_sys_path(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         project_root = tmp_path / "bare_project"
         project_root.mkdir()
-        assert detect_site_packages(project_root) == []
+        with caplog.at_level(logging.WARNING):
+            found = detect_site_packages(project_root)
+        assert found  # falls back to the current environment's site-packages
+        assert any("falling back" in record.message for record in caplog.records)

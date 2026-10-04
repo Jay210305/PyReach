@@ -43,6 +43,10 @@ def compute_module_fqn(
         - ``myapp/utils/http.py`` relative to root -> ``myapp.utils.http``
         - ``requests/__init__.py`` relative to root -> ``requests``
         - ``main.py`` relative to root -> ``main``
+        - ``__init__.py`` directly inside the module root -> the root's name
+
+    Raises:
+        ValueError: If the file is under neither *module_root* nor *package_root*.
     """
     resolved_file = file_path.resolve()
     resolved_root = module_root.resolve()
@@ -64,7 +68,6 @@ def compute_module_fqn(
         parts = parts[:-1]
 
     if not parts:
-        # File was __init__.py directly inside module_root
         return resolved_root.name
 
     return ".".join(parts)
@@ -81,7 +84,7 @@ class ModuleAST:
     imports: dict[str, str] = field(default_factory=dict)
 
     def iter_nodes(self) -> Iterator[ast.AST]:
-        """Yield all nodes in the AST using depth-first / breadth-first traversal."""
+        """Yield all nodes in the AST in breadth-first order (``ast.walk``)."""
         return ast.walk(self.tree)
 
 
@@ -93,9 +96,30 @@ class ASTBuilder:
         self.package_root = package_root.resolve() if package_root else None
         self._cache: dict[tuple[Path, float], ModuleAST] = {}
 
+    def _is_within_roots(self, resolved: Path) -> bool:
+        if self.package_root is not None:
+            try:
+                resolved.relative_to(self.package_root)
+                return True
+            except ValueError:
+                pass
+        try:
+            resolved.relative_to(self.module_root)
+            return True
+        except ValueError:
+            return False
+
     def build_file(self, path: Path) -> ModuleAST | None:
-        """Parse a source file and return a ModuleAST, or None on error with a warning."""
+        """Parse a source file and return a ModuleAST, or None on error with a warning.
+
+        Reads are confined to ``module_root`` and ``package_root`` (defense in
+        depth on top of :meth:`~pyreach.loaders.source.SourceLoader.discover`).
+        """
         resolved = path.resolve()
+        if not self._is_within_roots(resolved):
+            logger.warning("Refusing to read source file outside module/package roots: %s", path)
+            return None
+
         try:
             mtime = resolved.stat().st_mtime
         except OSError as exc:
@@ -122,7 +146,10 @@ class ASTBuilder:
             return None
 
     def build_all(self, files: Iterable[SourceFile]) -> list[ModuleAST]:
-        """Parse all given source files, skipping unparseable files with warnings."""
+        """Parse all given source files and populate their symbol tables.
+
+        Unparseable files are skipped with warnings.
+        """
         results: list[ModuleAST] = []
         skipped = 0
         for sf in files:
@@ -138,4 +165,14 @@ class ASTBuilder:
                 len(results),
                 skipped,
             )
+
+        self._populate_symbol_tables(results)
         return results
+
+    def _populate_symbol_tables(self, modules: list[ModuleAST]) -> None:
+        from pyreach.ast.resolver import ModuleIndex
+        from pyreach.ast.symbols import SymbolTableBuilder
+
+        index = ModuleIndex(modules)
+        for mod in modules:
+            SymbolTableBuilder(mod, index.get).build()

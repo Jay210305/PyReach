@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pyreach.parsers.osv_json import Vulnerability
+from pyreach.osv.mapper import Vulnerability
 from pyreach.reachability.contracts import (
     MAX_PATHS,
     ReachabilityResult,
@@ -51,28 +51,28 @@ class ReachabilityClassifier:
     ``06-ast-and-callgraph-engine.md`` §4.2:
 
     1. A proven static path -> ``REACHABLE``.
-    2. Any dynamic/unresolved signal on the path -> ``POTENTIALLY_REACHABLE``.
-    3. Package not imported -> ``NOT_REACHABLE`` (unless imports unresolved).
+    2. Package not imported -> ``NOT_REACHABLE`` (unless imports are unresolved).
+    3. Any dynamic/unresolved signal on the path -> ``POTENTIALLY_REACHABLE``.
     4. Package imported but exact symbol node absent -> ``POTENTIALLY_REACHABLE``.
     5. Exact node exists but imports unresolved -> ``POTENTIALLY_REACHABLE``.
     6. Depth limit reached with no dynamic -> ``NOT_REACHABLE``.
     7. Otherwise (no path, clean) -> ``NOT_REACHABLE``.
 
-    ``NOT_REACHABLE`` is only emitted when the analysis is fully certain, so a
-    false negative is impossible unless a rule above is mis-ordered.
+    Rule 2 precedes rule 3 so a dynamic edge elsewhere in the graph cannot turn
+    an unimported-package symbol into ``POTENTIALLY_REACHABLE`` (matrix row 4).
     """
 
     def classify(self, evidence: TraversalOutcome, context: SymbolContext) -> ReachabilityResult:
         if evidence.status == "REACHABLE" and evidence.paths:
             return self._reachable(evidence, context)
 
-        if context.dynamic_in_chain or evidence.encountered_dynamic:
-            return self._result(context, "POTENTIALLY_REACHABLE", REASON_DYNAMIC)
-
         if not context.package_imported:
             if context.unresolved_imports:
                 return self._result(context, "POTENTIALLY_REACHABLE", REASON_UNRESOLVED_IMPORTS)
             return self._result(context, "NOT_REACHABLE", REASON_PACKAGE_NOT_IMPORTED)
+
+        if context.dynamic_in_chain or evidence.encountered_dynamic:
+            return self._result(context, "POTENTIALLY_REACHABLE", REASON_DYNAMIC)
 
         if not context.exact_node_exists:
             return self._result(context, "POTENTIALLY_REACHABLE", REASON_IMPORTED_UNRESOLVED)

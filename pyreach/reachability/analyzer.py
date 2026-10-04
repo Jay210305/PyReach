@@ -10,21 +10,24 @@ Final classification is delegated to
 encodes the conservative decision matrix — uncertainty always resolves upward
 to ``POTENTIALLY_REACHABLE`` (R2, zero critical false negatives).
 
-The memoization caches are in-memory and per-run; call :func:`clear_cache`
-between runs/tests. A cross-run cache (SQLite ``reachability_results``) is a
-Sprint 4 concern.
+The memoization caches are per-run: :func:`analyze_reachability` clears them at
+the start of every call, so a changed graph or import set cannot leak stale
+verdicts into the next run.
 """
 
 from __future__ import annotations
 
+import ast
 import logging
 from collections import deque
+from collections.abc import Iterable
 
 import networkx as nx
 
-# mypy: disable-error-code="import-untyped"
+from pyreach.ast.builder import ModuleAST
 from pyreach.callgraph.engine import SENTINEL_DYNAMIC, SENTINEL_UNRESOLVED
-from pyreach.parsers.osv_json import Vulnerability
+from pyreach.exceptions import ConfigError
+from pyreach.osv.mapper import Vulnerability
 from pyreach.reachability.classifier import ReachabilityClassifier, SymbolContext
 from pyreach.reachability.contracts import (
     ReachabilityResult,
@@ -34,6 +37,8 @@ from pyreach.reachability.contracts import (
 
 logger = logging.getLogger(__name__)
 
+MAX_DEPTH = 7
+
 _traversal_cache: dict[tuple[str, str, int], TraversalOutcome] = {}
 _package_cache: dict[str, bool] = {}
 
@@ -42,6 +47,45 @@ def clear_cache() -> None:
     """Reset the in-memory traversal and package-import caches."""
     _traversal_cache.clear()
     _package_cache.clear()
+
+
+def _dynamic_import_targets(module: ModuleAST) -> set[str]:
+    """Top-level package names imported dynamically (``importlib.import_module``)."""
+    targets: set[str] = set()
+    for node in ast.walk(module.tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        is_dynamic_import = (isinstance(func, ast.Name) and func.id == "__import__") or (
+            isinstance(func, ast.Attribute) and func.attr == "import_module"
+        )
+        if not is_dynamic_import or not node.args:
+            continue
+        arg = node.args[0]
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            top = arg.value.split(".")[0]
+            if top:
+                targets.add(top)
+    return targets
+
+
+def imported_packages(modules: Iterable[ModuleAST]) -> set[str]:
+    """Return the set of top-level package names imported by *modules*.
+
+    This is the "application import set" consumed by ``package_imported``
+    detection (S3-T6 Pitfalls): library nodes in the graph must not count as
+    "imported by the application". Static imports (``import``/``from ...
+    import``) and dynamic imports (``importlib.import_module``/``__import__``)
+    both count, since a dynamically imported package is still reachable.
+    """
+    packages: set[str] = set()
+    for mod in modules:
+        for fqn in mod.imports.values():
+            top = fqn.split(".")[0]
+            if top:
+                packages.add(top)
+        packages.update(_dynamic_import_targets(mod))
+    return packages
 
 
 def _traverse(graph: nx.DiGraph, entry: str, target: str, max_depth: int) -> TraversalOutcome:
@@ -103,12 +147,17 @@ def _traverse_uncached(
     return TraversalOutcome(status, [], encountered_dynamic, depth_exceeded)
 
 
-def _package_imported(graph: nx.DiGraph, package: str) -> bool:
+def _package_imported(
+    graph: nx.DiGraph, package: str, application_imports: set[str] | None
+) -> bool:
     cached = _package_cache.get(package)
     if cached is not None:
         return cached
-    prefix = f"{package}."
-    imported = package in graph or any(n.startswith(prefix) for n in graph)
+    if application_imports is not None:
+        imported = package in application_imports
+    else:
+        prefix = f"{package}."
+        imported = package in graph or any(n.startswith(prefix) for n in graph)
     _package_cache[package] = imported
     return imported
 
@@ -149,20 +198,24 @@ def analyze_reachability(
     entry_points: list[str],
     vulnerabilities: list[Vulnerability],
     max_depth: int = 5,
-) -> dict[str, ReachabilityResult]:
+    application_imports: set[str] | None = None,
+) -> dict[tuple[str, str], ReachabilityResult]:
     """Classify reachability for every affected symbol of every vulnerability.
 
-    Results are keyed by symbol FQN (one entry per affected symbol).
+    Results are keyed by ``(osv_id, symbol)`` so two advisories that share an
+    affected symbol never overwrite each other.
     """
-    if max_depth < 0:
-        raise ValueError("max_depth must be >= 0")
+    if max_depth < 0 or max_depth > MAX_DEPTH:
+        raise ConfigError(f"max_depth must be in [0, {MAX_DEPTH}], got {max_depth}")
+
+    clear_cache()
 
     classifier = ReachabilityClassifier()
-    results: dict[str, ReachabilityResult] = {}
+    results: dict[tuple[str, str], ReachabilityResult] = {}
     for vuln in vulnerabilities:
         for symbol in vuln.affected_symbols:
-            results[symbol] = _analyze_symbol(
-                graph, entry_points, vuln, symbol, max_depth, classifier
+            results[(vuln.osv_id, symbol)] = _analyze_symbol(
+                graph, entry_points, vuln, symbol, max_depth, classifier, application_imports
             )
     return results
 
@@ -174,6 +227,7 @@ def _analyze_symbol(
     symbol: str,
     max_depth: int,
     classifier: ReachabilityClassifier,
+    application_imports: set[str] | None,
 ) -> ReachabilityResult:
     exact_node_exists = symbol in graph
     if exact_node_exists:
@@ -184,7 +238,7 @@ def _analyze_symbol(
     context = SymbolContext(
         symbol_fqn=symbol,
         vulnerability=vuln,
-        package_imported=_package_imported(graph, vuln.package_name),
+        package_imported=_package_imported(graph, vuln.package_name, application_imports),
         exact_node_exists=exact_node_exists,
         dynamic_in_chain=evidence.encountered_dynamic,
         unresolved_imports=_unresolved_imports(graph),

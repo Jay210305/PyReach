@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS affected_symbols (
     symbol_fqn TEXT NOT NULL,  -- e.g., "requests.sessions.Session.request"
     version_introduced TEXT,
     version_fixed TEXT,
+    version_fixed_inclusive INTEGER NOT NULL DEFAULT 0,  -- 0=fixed, 1=last_affected
     FOREIGN KEY (advisory_id) REFERENCES advisories(id) ON DELETE CASCADE
 );
 
@@ -212,6 +213,11 @@ class AdvisoryRepository:
         ...
 ```
 
+> Note: query-side lookup (`find_by_package_and_version`) lives in
+> `pyreach/osv/mapper.py` (`VulnerabilityMapper`), per doc 02 §OSV Mapper and
+> doc 03 §2. `AdvisoryRepository` owns persistence only (`upsert`,
+> `replace_symbols`).
+
 ## OSV Ingestion Algorithm
 
 ### Incremental Sync Flow
@@ -235,16 +241,22 @@ OSV uses `events` (introduced, fixed, last_affected, limit). PyReach stores thes
 
 ```python
 from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 
-def is_version_affected(version: str, introduced: Optional[str], fixed: Optional[str]) -> bool:
+def is_version_affected(
+    version: str,
+    introduced: Optional[str],
+    fixed: Optional[str],
+    fixed_inclusive: bool = False,
+) -> bool:
     v = Version(version)
     if introduced and v < Version(introduced):
         return False
-    if fixed and v >= Version(fixed):
+    if fixed and (v > fixed if fixed_inclusive else v >= fixed):
         return False
     return True
 ```
+
+`last_affected` is inclusive (stored with `fixed_inclusive=True`); `fixed` is exclusive.
 
 ## Call Graph Persistence Strategy
 

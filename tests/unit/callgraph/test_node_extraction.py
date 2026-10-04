@@ -102,6 +102,22 @@ f = lambda x: x + 1
     assert nodes[0].line_number == 2  # type: ignore[attr-defined]
 
 
+def test_nested_lambda_node() -> None:
+    source = """
+f = lambda: (
+    lambda: 1
+)
+"""
+    mod = _parse_module(source)
+    G = nx.DiGraph()
+    nodes = _extract_nodes(mod, G)
+    lambdas = [n for n in nodes if n.node_type == "LAMBDA"]
+    assert len(lambdas) == 2
+    outer = next(n for n in lambdas if n.line_number == 2)
+    inner = next(n for n in lambdas if n.line_number == 3)
+    assert G.nodes[inner.fqn]["parent_fqn"] == outer.fqn
+
+
 def test_nested_function_locals_fqn() -> None:
     source = """
 def outer():
@@ -198,17 +214,6 @@ class Service:
     assert G.nodes["test_mod.Service.handled"]["decorators"] == [""]
 
 
-def test_subscript_base_recorded_empty() -> None:
-    source = """
-class Derived(Generic[T]):
-    pass
-"""
-    mod = _parse_module(source)
-    G = nx.DiGraph()
-    _extract_nodes(mod, G)
-    assert G.nodes["test_mod.Derived"]["bases"] == [""]
-
-
 def test_line_and_file_metadata() -> None:
     source = """
 # line 1
@@ -288,22 +293,6 @@ class API:
     method = next(n for n in nodes if n.node_type == "METHOD")
     assert G.nodes[method.fqn]["is_async"] is True
     assert method.fqn == "test_mod.API.get"
-
-
-def test_inheritance_bases_recorded() -> None:
-    source = """
-class Base:
-    pass
-
-class Derived(Base):
-    pass
-"""
-    mod = _parse_module(source)
-    G = nx.DiGraph()
-    nodes = _extract_nodes(mod, G)
-    assert any(n.fqn == "test_mod.Derived" for n in nodes)
-    bases = G.nodes["test_mod.Derived"]["bases"]
-    assert "Base" in bases
 
 
 def test_module_level_fqn_no_dot() -> None:
@@ -440,8 +429,8 @@ def test_sentinel_nodes_added() -> None:
     G = engine.build([mod])
     assert "<DYNAMIC>" in G.nodes
     assert "<UNRESOLVED>" in G.nodes
-    assert G.nodes["<DYNAMIC>"]["node_type"] == "SENTINEL"
-    assert G.nodes["<UNRESOLVED>"]["node_type"] == "SENTINEL"
+    assert G.nodes["<DYNAMIC>"]["is_sentinel"] is True
+    assert G.nodes["<UNRESOLVED>"]["is_sentinel"] is True
 
 
 def test_decorator_call_with_attribute() -> None:

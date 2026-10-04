@@ -79,6 +79,36 @@ def test_edge_row_roundtrip_via_graph() -> None:
     assert G["pkg.a"]["pkg.b"]["confidence"] == 1.0
 
 
+def test_edge_row_roundtrip() -> None:
+    a = CGNode(fqn="pkg.a", node_type="FUNCTION")
+    b = CGNode(fqn="pkg.b", node_type="FUNCTION")
+    e = CGEdge(caller=a, callee=b, edge_type="STATIC", confidence=1.0)
+
+    node_ids = {"pkg.a": 1, "pkg.b": 2}
+    row = e.to_row(node_ids)
+    assert row == {"caller_id": 1, "callee_id": 2, "edge_type": "STATIC", "confidence": 1.0}
+
+    e2 = CGEdge.from_row(row, {1: a, 2: b})
+    assert e2 == e
+
+
+def test_add_cgedge_uses_precedence() -> None:
+    if nx is None:  # pragma: no cover
+        pytest.skip("networkx not installed")
+    G = nx.DiGraph()
+    a = CGNode(fqn="pkg.a")
+    b = CGNode(fqn="pkg.b")
+    from pyreach.callgraph.nodes import add_cgnode
+
+    add_cgnode(G, a)
+    add_cgnode(G, b)
+    add_cgedge(G, CGEdge(caller=a, callee=b, edge_type="DYNAMIC", confidence=0.5))
+    add_cgedge(G, CGEdge(caller=a, callee=b, edge_type="STATIC", confidence=1.0))
+    # STATIC wins on the duplicate, not last-write-wins
+    add_cgedge(G, CGEdge(caller=a, callee=b, edge_type="DYNAMIC", confidence=0.5))
+    assert G["pkg.a"]["pkg.b"]["edge_type"] == "STATIC"
+
+
 def test_add_cgedge_dynamic_confidence() -> None:
     if nx is None:  # pragma: no cover
         pytest.skip("networkx not installed")

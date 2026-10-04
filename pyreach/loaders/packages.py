@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
+import logging
+import sys
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import TYPE_CHECKING
 
 from pyreach.parsers.manifest import normalize_name
@@ -16,6 +18,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from pyreach.parsers.manifest import Dependency
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,34 @@ class InstalledPackage:
     version: str
     location: Path  # directory containing the importable package or editable source
     top_level: list[str]  # list of top-level importable module or package names
+
+
+def _infer_top_level(files: Iterable[PurePath]) -> list[str]:
+    """Infer top-level module names from a distribution's file listing."""
+    inferred: set[str] = set()
+    for file_path in files:
+        parts = file_path.parts
+        if not parts or parts[0].endswith((".dist-info", ".egg-info")):
+            continue
+        if len(parts) >= 2 and parts[1] == "__init__.py":
+            inferred.add(parts[0])
+        elif len(parts) == 1 and parts[0].endswith(".py"):
+            inferred.add(parts[0][:-3])
+    return sorted(inferred)
+
+
+def _sys_path_site_packages() -> list[Path]:
+    """Return the current environment's site-packages directories from ``sys.path``."""
+    seen: set[Path] = set()
+    result: list[Path] = []
+    for entry in sys.path:
+        candidate = Path(entry)
+        if candidate.name == "site-packages" and candidate.is_dir():
+            resolved = candidate.resolve()
+            if resolved not in seen:
+                seen.add(resolved)
+                result.append(resolved)
+    return result
 
 
 class PackageResolver:
@@ -43,9 +75,33 @@ class PackageResolver:
             return importlib.metadata.distributions(path=[str(p) for p in self.search_paths])
         return importlib.metadata.distributions()
 
+    def _site_packages_dirs(self) -> list[Path]:
+        if self.search_paths is not None:
+            return self.search_paths
+        return _sys_path_site_packages()
+
+    def _load_egg_links(self) -> dict[str, Path]:
+        result: dict[str, Path] = {}
+        for sp in self._site_packages_dirs():
+            if not sp.is_dir():
+                continue
+            for egg_link in sp.glob("*.egg-link"):
+                try:
+                    content = egg_link.read_text(encoding="utf-8").strip()
+                except OSError:
+                    continue
+                if not content:
+                    continue
+                first_line = content.splitlines()[0].strip()
+                if first_line:
+                    result[egg_link.stem] = Path(first_line).resolve()
+        return result
+
     def _load_cache(self) -> dict[str, InstalledPackage]:
         if self._cache is not None:
             return self._cache
+
+        egg_links = self._load_egg_links()
 
         cache: dict[str, InstalledPackage] = {}
         for dist in self._get_distributions():
@@ -58,7 +114,6 @@ class PackageResolver:
             norm_name = normalize_name(raw_name)
             version = dist.version or ""
 
-            # Determine package location (handle editable installs if present)
             location = Path(str(dist.locate_file(""))).resolve()
             direct_url_text = dist.read_text("direct_url.json")
             if direct_url_text:
@@ -72,7 +127,9 @@ class PackageResolver:
                 except (json.JSONDecodeError, ValueError, OSError):
                     pass
 
-            # Determine top-level modules
+            if raw_name in egg_links:
+                location = egg_links[raw_name]
+
             top_level: list[str] = []
             top_level_text = dist.read_text("top_level.txt")
             if top_level_text:
@@ -81,33 +138,15 @@ class PackageResolver:
             if not top_level:
                 record_text = dist.read_text("RECORD")
                 if record_text:
-                    inferred: set[str] = set()
-                    for line in record_text.splitlines():
-                        if not line.strip():
-                            continue
-                        file_rel = line.split(",")[0].strip()
-                        parts = Path(file_rel).parts
-                        if not parts or parts[0].endswith((".dist-info", ".egg-info")):
-                            continue
-                        if len(parts) >= 2 and parts[1] == "__init__.py":
-                            inferred.add(parts[0])
-                        elif len(parts) == 1 and parts[0].endswith(".py"):
-                            inferred.add(parts[0][:-3])
-                    if inferred:
-                        top_level = sorted(inferred)
+                    record_paths = [
+                        Path(line.split(",")[0].strip())
+                        for line in record_text.splitlines()
+                        if line.strip()
+                    ]
+                    top_level = _infer_top_level(record_paths)
 
             if not top_level and dist.files:
-                inferred_files: set[str] = set()
-                for file_path in dist.files:
-                    parts = file_path.parts
-                    if not parts or parts[0].endswith((".dist-info", ".egg-info")):
-                        continue
-                    if len(parts) >= 2 and parts[1] == "__init__.py":
-                        inferred_files.add(parts[0])
-                    elif len(parts) == 1 and parts[0].endswith(".py"):
-                        inferred_files.add(parts[0][:-3])
-                if inferred_files:
-                    top_level = sorted(inferred_files)
+                top_level = _infer_top_level(dist.files)
 
             if not top_level:
                 top_level = [raw_name.replace("-", "_")]
@@ -137,45 +176,44 @@ class PackageResolver:
         return result
 
 
-def detect_site_packages(project_root: Path) -> list[Path]:
-    """Detect site-packages directories under project virtualenvs (.venv or venv)."""
-    candidates = [
-        project_root / ".venv",
-        project_root / "venv",
-    ]
+def _venv_site_packages(venv: Path) -> list[Path]:
+    site_dirs: list[Path] = []
+    for sub in ("Lib", "lib"):
+        site = venv / sub / "site-packages"
+        if site.is_dir():
+            site_dirs.append(site.resolve())
 
+    lib_dir = venv / "lib"
+    if lib_dir.is_dir():
+        for py_dir in lib_dir.glob("python*"):
+            posix_site = py_dir / "site-packages"
+            if posix_site.is_dir():
+                site_dirs.append(posix_site.resolve())
+    return site_dirs
+
+
+def detect_site_packages(project_root: Path) -> list[Path]:
+    """Detect site-packages under project virtualenvs, falling back to sys.path."""
     site_packages_dirs: list[Path] = []
     seen: set[Path] = set()
 
-    for venv in candidates:
+    for venv in (project_root / ".venv", project_root / "venv"):
         if not venv.is_dir():
             continue
+        for candidate in _venv_site_packages(venv):
+            if candidate not in seen:
+                seen.add(candidate)
+                site_packages_dirs.append(candidate)
 
-        # Windows layout: Lib/site-packages
-        win_site = venv / "Lib" / "site-packages"
-        if win_site.is_dir():
-            resolved = win_site.resolve()
-            if resolved not in seen:
-                seen.add(resolved)
-                site_packages_dirs.append(resolved)
-
-        # Lowercase lib/site-packages
-        win_site_lower = venv / "lib" / "site-packages"
-        if win_site_lower.is_dir():
-            resolved = win_site_lower.resolve()
-            if resolved not in seen:
-                seen.add(resolved)
-                site_packages_dirs.append(resolved)
-
-        # POSIX layout: lib/pythonX.Y/site-packages
-        lib_dir = venv / "lib"
-        if lib_dir.is_dir():
-            for py_dir in lib_dir.glob("python*"):
-                posix_site = py_dir / "site-packages"
-                if posix_site.is_dir():
-                    resolved = posix_site.resolve()
-                    if resolved not in seen:
-                        seen.add(resolved)
-                        site_packages_dirs.append(resolved)
+    if not site_packages_dirs:
+        logger.warning(
+            "No project virtualenv (.venv/venv) found under %s; "
+            "falling back to the current environment.",
+            project_root,
+        )
+        for candidate in _sys_path_site_packages():
+            if candidate not in seen:
+                seen.add(candidate)
+                site_packages_dirs.append(candidate)
 
     return site_packages_dirs

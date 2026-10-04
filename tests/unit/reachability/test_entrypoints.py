@@ -49,6 +49,15 @@ def test_detect_fastapi_decorator() -> None:
     assert "myapp.read_root" in EntryPointDetector([mod]).detect()
 
 
+def test_detect_fastapi_alias_instance() -> None:
+    mod = _module(
+        "from fastapi import FastAPI\napplication = FastAPI()\n\n"
+        "@application.get('/')\ndef read_root():\n    pass\n",
+        symbol_table={"FastAPI": "fastapi.FastAPI"},
+    )
+    assert "myapp.read_root" in EntryPointDetector([mod]).detect()
+
+
 def test_detect_flask_route() -> None:
     mod = _module(
         "from flask import Flask\napp = Flask(__name__)\n\n"

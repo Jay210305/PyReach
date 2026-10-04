@@ -213,3 +213,37 @@ class TestASTBuilder:
             assert mod.module_fqn == f"sample_{i:02d}"
             assert isinstance(mod.tree, ast.Module)
             assert len(list(mod.iter_nodes())) > 0
+
+    def test_build_file_outside_roots_refused(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        root = tmp_path / "root"
+        root.mkdir()
+        outside = tmp_path / "outside.py"
+        outside.write_text("x = 1\n", encoding="utf-8")
+
+        builder = ASTBuilder(module_root=root)
+        with caplog.at_level(logging.WARNING):
+            result = builder.build_file(outside)
+
+        assert result is None
+        assert any("outside module/package roots" in record.message for record in caplog.records)
+
+    def test_build_all_populates_symbol_tables(self, tmp_path: Path) -> None:
+        root = tmp_path
+        (root / "a.py").write_text("import os\n", encoding="utf-8")
+        (root / "b.py").write_text("from collections import OrderedDict\n", encoding="utf-8")
+
+        builder = ASTBuilder(module_root=root)
+        source_files = [
+            SourceFile(path=root / "a.py", rel_path=Path("a.py")),
+            SourceFile(path=root / "b.py", rel_path=Path("b.py")),
+        ]
+
+        modules = builder.build_all(source_files)
+        assert len(modules) == 2
+
+        a_mod = next(m for m in modules if m.module_fqn == "a")
+        b_mod = next(m for m in modules if m.module_fqn == "b")
+        assert a_mod.symbol_table.get("os") == "os"
+        assert b_mod.symbol_table.get("OrderedDict") == "collections.OrderedDict"

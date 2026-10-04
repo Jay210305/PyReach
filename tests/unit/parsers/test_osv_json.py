@@ -1,7 +1,7 @@
+from pyreach.osv.mapper import AffectedSymbol, Vulnerability, is_version_affected
 from pyreach.parsers.osv_json import (
-    Vulnerability,
     extract_affected,
-    is_version_affected,
+    map_cvss_score_to_level,
     parse_osv_record,
 )
 
@@ -51,13 +51,49 @@ def test_skip_non_pypi_record() -> None:
 
 
 def test_severity_mapping() -> None:
-    from pyreach.parsers.osv_json import map_cvss_score_to_level
-
     assert map_cvss_score_to_level(9.8) == "CRITICAL"
     assert map_cvss_score_to_level(8.0) == "HIGH"
     assert map_cvss_score_to_level(5.5) == "MEDIUM"
     assert map_cvss_score_to_level(2.0) == "LOW"
     assert map_cvss_score_to_level(None) is None
+
+
+def test_cvss_vector_score_parsed() -> None:
+    record = {
+        "id": "GHSA-VECTOR",
+        "severity": [
+            {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}
+        ],
+        "affected": [
+            {
+                "package": {"name": "requests", "ecosystem": "PyPI"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}],
+            }
+        ],
+    }
+    vuln = parse_osv_record(record)
+    assert vuln is not None
+    assert vuln.severity_score == 7.5
+    assert vuln.severity_level == "HIGH"
+
+
+def test_cvss_vector_critical() -> None:
+    record = {
+        "id": "GHSA-CRITICAL",
+        "severity": [
+            {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+        ],
+        "affected": [
+            {
+                "package": {"name": "requests", "ecosystem": "PyPI"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}],
+            }
+        ],
+    }
+    vuln = parse_osv_record(record)
+    assert vuln is not None
+    assert vuln.severity_score == 9.8
+    assert vuln.severity_level == "CRITICAL"
 
 
 def test_symbol_sentinel_when_absent() -> None:
@@ -99,10 +135,59 @@ def test_extract_affected_multiple_symbols() -> None:
         ],
     }
     items = extract_affected(record)
-    symbols = [s[0] for s in items]
+    symbols = [s.symbol_fqn for s in items]
     assert symbols == ["urllib3.poolmanager.PoolManager", "urllib3.request"]
-    assert items[0][1] == "1.20.0"
-    assert items[0][2] == "1.26.5"
+    assert items[0].version_introduced == "1.20.0"
+    assert items[0].version_fixed == "1.26.5"
+    assert items[0].version_fixed_inclusive is False
+
+
+def test_extract_affected_multi_range() -> None:
+    record = {
+        "id": "GHSA-MULTI-RANGE",
+        "affected": [
+            {
+                "package": {"name": "pkg", "ecosystem": "PyPI"},
+                "ranges": [
+                    {
+                        "type": "ECOSYSTEM",
+                        "events": [
+                            {"introduced": "1.0.0"},
+                            {"fixed": "1.5.0"},
+                            {"introduced": "2.0.0"},
+                            {"fixed": "2.1.0"},
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    items = extract_affected(record)
+    assert len(items) == 2
+    assert items[0].version_introduced == "1.0.0"
+    assert items[0].version_fixed == "1.5.0"
+    assert items[1].version_introduced == "2.0.0"
+    assert items[1].version_fixed == "2.1.0"
+    assert is_version_affected("1.2.0", "1.0.0", "1.5.0") is True
+    assert is_version_affected("2.0.5", "2.0.0", "2.1.0") is True
+
+
+def test_extract_affected_versions_list() -> None:
+    record = {
+        "id": "GHSA-VERSIONS",
+        "affected": [
+            {
+                "package": {"name": "pkg", "ecosystem": "PyPI"},
+                "versions": ["1.2.0", "1.2.1"],
+            }
+        ],
+    }
+    items = extract_affected(record)
+    assert len(items) == 2
+    assert items[0].symbol_fqn == "*"
+    assert items[0].version_introduced == "1.2.0"
+    assert items[0].version_fixed == "1.2.0"
+    assert items[0].version_fixed_inclusive is True
 
 
 def test_is_version_affected_truth_table() -> None:
@@ -125,6 +210,15 @@ def test_is_version_affected_truth_table() -> None:
     # Invalid versions resolve conservatively to True
     assert is_version_affected("not-a-valid-version", "1.0.0", "2.0.0") is True
     assert is_version_affected("1.0.0", "invalid-introduced", "2.0.0") is True
+
+
+def test_is_version_affected_inclusive_boundary() -> None:
+    # last_affected is inclusive: the boundary version IS affected
+    assert is_version_affected("3.4.7", "3.0.0", "3.4.7", fixed_inclusive=True) is True
+    assert is_version_affected("3.4.8", "3.0.0", "3.4.7", fixed_inclusive=True) is False
+    assert is_version_affected("3.0.0", "3.0.0", "3.4.7", fixed_inclusive=True) is True
+    # fixed is exclusive: the boundary version is NOT affected
+    assert is_version_affected("3.4.7", "3.0.0", "3.4.7", fixed_inclusive=False) is False
 
 
 def test_malformed_record_returns_none() -> None:
@@ -175,8 +269,10 @@ def test_last_affected_range_handling() -> None:
     }
     items = extract_affected(record)
     assert len(items) == 1
-    assert items[0][1] == "3.0.0"
-    assert items[0][2] == "3.4.7"
+    assert isinstance(items[0], AffectedSymbol)
+    assert items[0].version_introduced == "3.0.0"
+    assert items[0].version_fixed == "3.4.7"
+    assert items[0].version_fixed_inclusive is True
 
 
 def test_ecosystem_specific_fallback_symbols() -> None:
@@ -192,7 +288,7 @@ def test_ecosystem_specific_fallback_symbols() -> None:
     }
     items = extract_affected(record)
     assert len(items) == 1
-    assert items[0][0] == "werkzeug.debug.DebuggedApplication"
+    assert items[0].symbol_fqn == "werkzeug.debug.DebuggedApplication"
 
 
 def test_sample_osv_record_fixture(sample_osv_record: dict[str, object]) -> None:
