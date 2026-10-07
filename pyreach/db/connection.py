@@ -25,6 +25,8 @@ def get_db_connection(db_path: str | Path) -> Generator[sqlite3.Connection, None
     conn = sqlite3.connect(str(resolved_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     try:
         yield conn
         conn.commit()

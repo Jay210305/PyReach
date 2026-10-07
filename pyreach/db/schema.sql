@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS reachability_results (
     symbol_fqn TEXT NOT NULL,
     entry_point_fqn TEXT NOT NULL,
     result TEXT CHECK(result IN ('REACHABLE', 'NOT_REACHABLE', 'POTENTIALLY_REACHABLE')),
-    max_depth INTEGER,
+    max_depth INTEGER CHECK(max_depth IS NULL OR (max_depth BETWEEN 1 AND 5)),
     path_json TEXT,  -- JSON array of node_fqn strings representing the path
     computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(symbol_fqn, entry_point_fqn, max_depth)

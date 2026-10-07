@@ -1,7 +1,7 @@
 ---
 description: Reviews code for best practices and potential issues — invoke after implementing a feature, completing a logical chunk of code, or before merging a pull request.
 mode: subagent
-model: anthropic/claude-opus-4-5-20251002
+model: meta/muse-spark-1.3-contributor
 color: "#ff0000"
 permissions:
   - action: edit
