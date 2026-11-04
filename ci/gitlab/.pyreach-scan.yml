@@ -1,0 +1,13 @@
+.pyreach-scan:
+  stage: security
+  tags: [lidercom-local-runner, security]
+  variables:
+    PYREACH_DB_PATH: /opt/pyreach/osv.db
+    PYREACH_MANIFEST: requirements.txt
+  script:
+    - test -r "$PYREACH_DB_PATH" || { echo 'Prepare offline DB with pyreach sync-osv first'; exit 2; }
+    - pyreach . --manifest "$PYREACH_MANIFEST" --db-path "$PYREACH_DB_PATH" --output "$CI_PROJECT_DIR/pyreach-results.sarif" --include-potentially
+  artifacts:
+    when: always
+    paths: [pyreach-results.sarif]
+  allow_failure: false

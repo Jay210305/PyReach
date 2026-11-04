@@ -1,5 +1,7 @@
 # SARIF and CLI Design
 
+> Actualización de contrato 2026-11-04 (prevalece sobre ejemplos previos): La entrega usa argparse, configuración YAML estricta, domain 0..7, JSON/texto/SARIF y caché JSON por contenido. Nunca se fabrica startLine=1: las ubicaciones desconocidas omiten región. Ver ADR-002 y manuales.
+
 ## 1. SARIF v2.1.0 Output Design
 
 ### 1.1 Design Principles

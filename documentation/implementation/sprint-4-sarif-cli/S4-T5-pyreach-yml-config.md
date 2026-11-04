@@ -130,7 +130,10 @@ uv run pyreach tests/fixtures/projects/linear_reachable -f text
 
 ## Definition of Done
 
-- [ ] Config loader + tests merged.
-- [ ] Precedence rules match the spec.
-- [ ] `PyYAML` dependency declared.
-- [ ] Feature cleanly removable if cut.
+- [x] Config loader + tests merged.
+- [x] Precedence rules match the spec.
+- [x] `PyYAML` dependency declared.
+- [x] Feature cleanly removable if cut.
+
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

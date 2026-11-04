@@ -134,7 +134,10 @@ uv run pytest tests/e2e -q
 
 ## Definition of Done
 
-- [ ] CLI merged and installable.
-- [ ] `--help` documents every option.
-- [ ] E2E tests green.
-- [ ] Pipeline steps unit-tested.
+- [x] CLI merged and installable.
+- [x] `--help` documents every option.
+- [x] E2E tests green.
+- [x] Pipeline steps unit-tested.
+
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

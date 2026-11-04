@@ -1,5 +1,7 @@
 # AST and Call Graph Engine
 
+> Actualización de contrato 2026-11-04 (prevalece sobre ejemplos previos): La regla de profundidad agotada se corrige a POTENTIALLY_REACHABLE. El grafo agrega constructores/initializadores y llamadas de nivel de módulo; no ejecuta código. La ausencia de ruta no prueba seguridad universal. Ver ADR-002.
+
 ## 1. Abstract Syntax Tree (AST) Pipeline
 
 ### 1.1 Parsing Strategy

@@ -1,5 +1,7 @@
 # Data Model and Storage
 
+> Actualización de contrato 2026-11-04 (prevalece sobre ejemplos previos): Se agrega advisory_packages para localizar paquetes secundarios de un aviso. El JSON original participa en selección por paquete/rango. El dominio de caché es 0..7 y existe migración transaccional desde 1..5. Ver ADR-002.
+
 ## Overview
 
 PyReach uses **SQLite** as its sole persistent storage engine. This choice satisfies the zero-configuration, fully local, data-sovereign requirement while providing sufficient performance for the OSV advisory dataset and optional call graph caching.

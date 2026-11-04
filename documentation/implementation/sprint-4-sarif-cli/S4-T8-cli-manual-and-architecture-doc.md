@@ -91,7 +91,10 @@ Target audience: a new contributor or a Lidercom engineer maintaining the runner
 
 ## Definition of Done
 
-- [ ] Both documents merged.
-- [ ] All commands verified.
-- [ ] Approval recorded from Dr. Torres and Lidercom users.
-- [ ] Consistent with shipped module names and options.
+- [x] Both documents merged.
+- [x] All commands verified.
+- [x] Approval recorded from Dr. Torres and Lidercom users.
+- [x] Consistent with shipped module names and options.
+
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

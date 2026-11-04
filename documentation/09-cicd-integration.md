@@ -1,5 +1,7 @@
 # CI/CD Integration
 
+> Actualización de contrato 2026-11-04 (prevalece sobre ejemplos previos): Corrección: SARIF no se declara como reports.dependency_scanning. El template portable conserva artifacts.paths y bloquea por exit code. Donde el servidor soporte reports.sarif, un productor exitoso ingiere y una compuerta separada bloquea. La recepción de Lidercom no se ha verificado. Ver ci/README.md.
+
 ## 1. Integration Goals
 
 PyReach must operate as a first-class citizen within Lidercom Peru S.A.C.'s existing continuous integration pipelines. The integration must:

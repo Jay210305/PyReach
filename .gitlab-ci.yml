@@ -1,6 +1,7 @@
 stages:
   - lint
   - test
+  - security
 
 variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
@@ -42,3 +43,16 @@ test:
         path: coverage.xml
     paths:
       - coverage.xml
+
+security:
+  stage: security
+  before_script:
+    - pip install uv==0.13.7
+    - uv sync --locked
+  script:
+    - uv run bandit -r pyreach -ll
+    - uv run python scripts/validate_release.py --output release-evidence
+    - uv build
+  artifacts:
+    when: always
+    paths: [release-evidence/, dist/]

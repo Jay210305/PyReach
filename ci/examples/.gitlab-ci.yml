@@ -1,0 +1,5 @@
+stages: [security]
+include:
+  - local: ci/gitlab/.pyreach-scan.yml
+pyreach:
+  extends: .pyreach-scan

@@ -1,0 +1,7 @@
+FROM python:3.10-slim
+COPY dist/*.whl /tmp/wheels/
+RUN pip install --no-cache-dir /tmp/wheels/*.whl && rm -rf /tmp/wheels
+RUN useradd --create-home --uid 10001 pyreach
+USER pyreach
+WORKDIR /work
+ENTRYPOINT ["pyreach"]

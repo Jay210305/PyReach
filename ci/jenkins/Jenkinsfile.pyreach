@@ -1,0 +1,16 @@
+pipeline {
+  agent { label 'lidercom-local-runner' }
+  stages {
+    stage('PyReach security gate') {
+      steps {
+        sh 'test -r /opt/pyreach/osv.db'
+        sh 'pyreach . -d /opt/pyreach/osv.db -o pyreach-results.sarif --include-potentially'
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'pyreach-results.sarif', allowEmptyArchive: true
+        }
+      }
+    }
+  }
+}

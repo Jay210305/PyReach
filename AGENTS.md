@@ -24,7 +24,7 @@ vulnerabilities**. Given a Python project's manifest and source, it:
 Non-negotiables:
 - **Local-first**: no network during analysis (only `pyreach sync-osv` may fetch data).
 - **Zero critical false negatives**: uncertainty resolves upward to `POTENTIALLY_REACHABLE`.
-- **<45s** scan budget for typical microservices.
+- **<=45s** scan budget for typical microservices.
 - **SARIF v2.1.0** output for GitLab/GitHub/VS Code consumption.
 
 ---
@@ -121,7 +121,7 @@ PyReach/
 │   ├── 09-cicd-integration.md
 │   ├── 10-risk-and-contingency-plan.md
 │   └── implementation/            <- decomposed tasks (S1-T0 … S4-T8)
-└── pyreach/                       <- source package (Sprint 1+2: parsers, db, osv, ast, loaders; Sprint 3-4: callgraph, reachability, output, cli pendientes)
+└── pyreach/                       <- source package (Sprint 1+2: parsers, db, osv, ast, loaders; Sprint 3-4: callgraph, reachability, output, cli implementados)
 ```
 
 Target package structure (from `03-technical-specifications.md` §2):
@@ -417,8 +417,9 @@ Task IDs: `S1-T0 … S4-T8`. `S1-T0` (uv bootstrap) is a hard prerequisite for a
 - [x] `pyproject.toml`, `uv.lock`, `.gitignore`, `AGENTS.md` created.
 - [x] Sprint 1 completado (S1-T0..T7): parsers `Dependency`/`RequirementsTxtParser`/`PipfileLockParser`, `osv_json`/`importer`, `db` schema+connection, fixtures TDD, CI gate — `04:34` M1 cerrado.
 - [x] Sprint 2 completado (S2-T1..T7): `pyreach/ast` (`builder`/`symbols`/`resolver`), `loaders/source`+`packages`, study notes `documentation/study/ast-notes.md`, corpus `tests/fixtures/code_samples/` — M2 cerrado (2026-09-29).
-- [ ] Sprint 3 pendiente (S3-T1..T8): `callgraph` + `reachability` — siguiente en ruta crítica.
-- [ ] Sprint 4 pendiente (S4-T1..T8): SARIF/CLI/CI.
+- [x] Sprint 3 (S3-T1..T8): núcleo implementado y regresiones de entrega verificadas al 2026-11-04.
+- [x] Sprint 4: CLI, config, SARIF, empaquetado, CI, réplica y manuales implementados.
+- [ ] S4-T7 externo: piloto Lidercom, aceptación de dashboard y medición industrial requieren acceso y usuarios reales; ver `documentation/delivery-status.md`.
 
 When you finish a task, update its Definition of Done checklist and run the full gate:
 
@@ -472,3 +473,11 @@ Rules:
 - Mark deliberate simplifications that cut a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and upgrade path.
 
 Not lazy about: understanding the problem (read it fully and trace the real flow before picking a rung, a small diff you don't understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs (the platform is never the spec ideal, a clock drifts, a sensor reads off), anything explicitly requested. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind, the smallest thing that fails if the logic breaks (an assert-based demo/self-check or one small test file; no frameworks, no fixtures). Trivial one-liners need no test.
+
+## 19. Release contract clarification — 2026-11-04
+
+See ADR-002. Depth domain 0..7; exhaustion is POTENTIALLY_REACHABLE. Unknown physical
+locations never get invented startLine values. Graph cache is content-addressed JSON.
+GitLab SARIF ingestion uses its dedicated report type when supported; generic artifact
+upload plus exit gating is the portable default. No user acceptance or industrial
+false-positive reduction is implied by synthetic tests or test coverage.

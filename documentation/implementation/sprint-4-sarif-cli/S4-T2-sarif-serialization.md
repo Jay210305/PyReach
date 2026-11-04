@@ -143,7 +143,10 @@ uv run pytest tests/unit/output --cov=pyreach.output --cov-report=term-missing
 
 ## Definition of Done
 
-- [ ] Builder + tests merged.
-- [ ] Every output validates against the cached schema.
-- [ ] `codeFlows` complete for reachable results.
-- [ ] Coverage >=80% on `output/sarif.py`.
+- [x] Builder + tests merged.
+- [x] Every output validates against the cached schema.
+- [x] `codeFlows` complete for reachable results.
+- [x] Coverage >=80% on `output/sarif.py`.
+
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

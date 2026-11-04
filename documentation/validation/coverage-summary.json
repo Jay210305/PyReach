@@ -1,0 +1,344 @@
+{
+  "totals": {
+    "covered_lines": 2431,
+    "num_statements": 2531,
+    "percent_covered": 96.04899249308573,
+    "percent_covered_display": "96",
+    "missing_lines": 100,
+    "excluded_lines": 12,
+    "percent_statements_covered": 96.04899249308573,
+    "percent_statements_covered_display": "96"
+  },
+  "files": {
+    "pyreach/__init__.py": {
+      "covered_lines": 1,
+      "num_statements": 1,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/__main__.py": {
+      "covered_lines": 2,
+      "num_statements": 2,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/ast/__init__.py": {
+      "covered_lines": 4,
+      "num_statements": 4,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/ast/builder.py": {
+      "covered_lines": 97,
+      "num_statements": 102,
+      "percent_covered": 95.09803921568627,
+      "percent_covered_display": "95",
+      "missing_lines": 5,
+      "excluded_lines": 3,
+      "percent_statements_covered": 95.09803921568627,
+      "percent_statements_covered_display": "95"
+    },
+    "pyreach/ast/resolver.py": {
+      "covered_lines": 96,
+      "num_statements": 101,
+      "percent_covered": 95.04950495049505,
+      "percent_covered_display": "95",
+      "missing_lines": 5,
+      "excluded_lines": 0,
+      "percent_statements_covered": 95.04950495049505,
+      "percent_statements_covered_display": "95"
+    },
+    "pyreach/ast/symbols.py": {
+      "covered_lines": 108,
+      "num_statements": 109,
+      "percent_covered": 99.08256880733946,
+      "percent_covered_display": "99",
+      "missing_lines": 1,
+      "excluded_lines": 0,
+      "percent_statements_covered": 99.08256880733946,
+      "percent_statements_covered_display": "99"
+    },
+    "pyreach/callgraph/__init__.py": {
+      "covered_lines": 3,
+      "num_statements": 3,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/callgraph/edges.py": {
+      "covered_lines": 38,
+      "num_statements": 38,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/callgraph/engine.py": {
+      "covered_lines": 453,
+      "num_statements": 457,
+      "percent_covered": 99.12472647702407,
+      "percent_covered_display": "99",
+      "missing_lines": 4,
+      "excluded_lines": 0,
+      "percent_statements_covered": 99.12472647702407,
+      "percent_statements_covered_display": "99"
+    },
+    "pyreach/callgraph/nodes.py": {
+      "covered_lines": 41,
+      "num_statements": 41,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/cli.py": {
+      "covered_lines": 200,
+      "num_statements": 219,
+      "percent_covered": 91.32420091324201,
+      "percent_covered_display": "91",
+      "missing_lines": 19,
+      "excluded_lines": 0,
+      "percent_statements_covered": 91.32420091324201,
+      "percent_statements_covered_display": "91"
+    },
+    "pyreach/config.py": {
+      "covered_lines": 89,
+      "num_statements": 93,
+      "percent_covered": 95.6989247311828,
+      "percent_covered_display": "96",
+      "missing_lines": 4,
+      "excluded_lines": 0,
+      "percent_statements_covered": 95.6989247311828,
+      "percent_statements_covered_display": "96"
+    },
+    "pyreach/db/__init__.py": {
+      "covered_lines": 2,
+      "num_statements": 2,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/db/connection.py": {
+      "covered_lines": 37,
+      "num_statements": 42,
+      "percent_covered": 88.0952380952381,
+      "percent_covered_display": "88",
+      "missing_lines": 5,
+      "excluded_lines": 0,
+      "percent_statements_covered": 88.0952380952381,
+      "percent_statements_covered_display": "88"
+    },
+    "pyreach/db/repositories.py": {
+      "covered_lines": 21,
+      "num_statements": 21,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/exceptions.py": {
+      "covered_lines": 6,
+      "num_statements": 6,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/loaders/__init__.py": {
+      "covered_lines": 3,
+      "num_statements": 3,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/loaders/packages.py": {
+      "covered_lines": 144,
+      "num_statements": 151,
+      "percent_covered": 95.36423841059603,
+      "percent_covered_display": "95",
+      "missing_lines": 7,
+      "excluded_lines": 3,
+      "percent_statements_covered": 95.36423841059603,
+      "percent_statements_covered_display": "95"
+    },
+    "pyreach/loaders/source.py": {
+      "covered_lines": 73,
+      "num_statements": 79,
+      "percent_covered": 92.40506329113924,
+      "percent_covered_display": "92",
+      "missing_lines": 6,
+      "excluded_lines": 0,
+      "percent_statements_covered": 92.40506329113924,
+      "percent_statements_covered_display": "92"
+    },
+    "pyreach/osv/__init__.py": {
+      "covered_lines": 3,
+      "num_statements": 3,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/osv/importer.py": {
+      "covered_lines": 136,
+      "num_statements": 146,
+      "percent_covered": 93.15068493150685,
+      "percent_covered_display": "93",
+      "missing_lines": 10,
+      "excluded_lines": 0,
+      "percent_statements_covered": 93.15068493150685,
+      "percent_statements_covered_display": "93"
+    },
+    "pyreach/osv/mapper.py": {
+      "covered_lines": 86,
+      "num_statements": 90,
+      "percent_covered": 95.55555555555556,
+      "percent_covered_display": "96",
+      "missing_lines": 4,
+      "excluded_lines": 0,
+      "percent_statements_covered": 95.55555555555556,
+      "percent_statements_covered_display": "96"
+    },
+    "pyreach/output/__init__.py": {
+      "covered_lines": 0,
+      "num_statements": 0,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/output/sarif.py": {
+      "covered_lines": 61,
+      "num_statements": 61,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/output/summary.py": {
+      "covered_lines": 22,
+      "num_statements": 22,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/parsers/__init__.py": {
+      "covered_lines": 2,
+      "num_statements": 2,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/parsers/manifest.py": {
+      "covered_lines": 178,
+      "num_statements": 186,
+      "percent_covered": 95.6989247311828,
+      "percent_covered_display": "96",
+      "missing_lines": 8,
+      "excluded_lines": 6,
+      "percent_statements_covered": 95.6989247311828,
+      "percent_statements_covered_display": "96"
+    },
+    "pyreach/parsers/osv_json.py": {
+      "covered_lines": 167,
+      "num_statements": 187,
+      "percent_covered": 89.3048128342246,
+      "percent_covered_display": "89",
+      "missing_lines": 20,
+      "excluded_lines": 0,
+      "percent_statements_covered": 89.3048128342246,
+      "percent_statements_covered_display": "89"
+    },
+    "pyreach/reachability/__init__.py": {
+      "covered_lines": 5,
+      "num_statements": 5,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/reachability/analyzer.py": {
+      "covered_lines": 123,
+      "num_statements": 123,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/reachability/classifier.py": {
+      "covered_lines": 45,
+      "num_statements": 45,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/reachability/contracts.py": {
+      "covered_lines": 19,
+      "num_statements": 19,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "pyreach/reachability/entrypoints.py": {
+      "covered_lines": 166,
+      "num_statements": 168,
+      "percent_covered": 98.80952380952381,
+      "percent_covered_display": "99",
+      "missing_lines": 2,
+      "excluded_lines": 0,
+      "percent_statements_covered": 98.80952380952381,
+      "percent_statements_covered_display": "99"
+    }
+  }
+}

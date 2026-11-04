@@ -106,7 +106,10 @@ Create `ci/docker/Dockerfile.pyreach`:
 
 ## Definition of Done
 
-- [ ] GitLab + Jenkins + cron + Docker templates merged.
-- [ ] `ci/README.md` explains variable setup and override procedure.
-- [ ] YAML validated; example include present.
-- [ ] Gate behavior demonstrated on a synthetic project.
+- [x] GitLab + Jenkins + cron + Docker templates merged.
+- [x] `ci/README.md` explains variable setup and override procedure.
+- [x] YAML validated; example include present.
+- [x] Gate behavior demonstrated on a synthetic project.
+
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.
