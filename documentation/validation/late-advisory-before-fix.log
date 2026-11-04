@@ -1,0 +1,22 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ test_incremental_imports_unseen_record_even_if_older_than_watermark ______
+
+tmp_path = PosixPath('/tmp/pytest-of-dasso/pytest-20/test_incremental_imports_unsee0')
+
+    def test_incremental_imports_unseen_record_even_if_older_than_watermark(tmp_path):
+        first = tmp_path / "first.jsonl"
+        first.write_text(json.dumps(record("SEEN")) + "\n")
+        db = tmp_path / "osv.db"
+        sync_osv(db, first, incremental=True)
+        later = tmp_path / "later.jsonl"
+        later.write_text(json.dumps(record("UNSEEN")) + "\n")
+>       assert sync_osv(db, later, incremental=True).imported == 1
+E       AssertionError: assert 0 == 1
+E        +  where 0 = ImportStats(total=1, imported=0, skipped_ecosystem=0, skipped_malformed=0, skipped_up_to_date=1, symbols_imported=0, elapsed_seconds=0.0010874820000026375).imported
+E        +    where ImportStats(total=1, imported=0, skipped_ecosystem=0, skipped_malformed=0, skipped_up_to_date=1, symbols_imported=0, elapsed_seconds=0.0010874820000026375) = sync_osv(PosixPath('/tmp/pytest-of-dasso/pytest-20/test_incremental_imports_unsee0/osv.db'), PosixPath('/tmp/pytest-of-dasso/pytest-20/test_incremental_imports_unsee0/later.jsonl'), incremental=True)
+
+tests/integration/test_delivery_regressions.py:139: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_delivery_regressions.py::test_incremental_imports_unseen_record_even_if_older_than_watermark
+1 failed in 0.24s

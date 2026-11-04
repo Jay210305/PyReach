@@ -82,13 +82,6 @@ def _date_part(value: Any) -> str | None:
     return None
 
 
-def _read_last_sync(conn: sqlite3.Connection) -> str | None:
-    row = conn.execute(
-        "SELECT value FROM sync_metadata WHERE key = ?;", (_LAST_SYNC_KEY,)
-    ).fetchone()
-    return row[0] if row else None
-
-
 def _write_last_sync(conn: sqlite3.Connection, value: str) -> None:
     conn.execute(
         "INSERT INTO sync_metadata (key, value) VALUES (?, ?) "
@@ -104,9 +97,7 @@ class OSVImporter:
         self.db_path = Path(db_path)
         self.incremental = incremental
 
-    def import_file(
-        self, path: str | Path, *, last_sync: str | None = None, update_sync: bool = True
-    ) -> ImportStats:
+    def import_file(self, path: str | Path, *, update_sync: bool = True) -> ImportStats:
         """Stream an OSV JSONL (or JSON array) file and insert/update advisories."""
         file_path = Path(path)
         if not file_path.is_file():
@@ -118,8 +109,6 @@ class OSVImporter:
         initialize_database(self.db_path)
         with get_db_connection(self.db_path) as conn:
             repo = AdvisoryRepository(conn)
-            if update_sync:
-                last_sync = _read_last_sync(conn) if self.incremental else None
             sync_start = _utc_timestamp() if self.incremental else None
 
             for record in iter_osv_records(file_path):
@@ -129,11 +118,16 @@ class OSVImporter:
                     continue
 
                 modified = record.get("modified")
+                existing = conn.execute(
+                    "SELECT modified_date FROM advisories WHERE osv_id = ?",
+                    (record.get("id") if isinstance(record.get("id"), str) else "",),
+                ).fetchone()
                 if (
                     self.incremental
-                    and last_sync
+                    and existing
+                    and isinstance(existing[0], str)
                     and isinstance(modified, str)
-                    and modified <= last_sync
+                    and modified <= existing[0]
                 ):
                     stats.skipped_up_to_date += 1
                     continue
@@ -203,14 +197,12 @@ def sync_osv(
         aggregated = ImportStats()
         start = time.monotonic()
         initialize_database(db_path)
-        with get_db_connection(db_path) as conn:
-            initial_sync = _read_last_sync(conn) if incremental else None
         sync_start = _utc_timestamp()
         files = sorted([*source_path.glob("*.jsonl"), *source_path.glob("*.json")])
         if not files:
             raise OSVError(f"No OSV JSON/JSONL files in {source_path}")
         for f in files:
-            file_stats = importer.import_file(f, last_sync=initial_sync, update_sync=False)
+            file_stats = importer.import_file(f, update_sync=False)
             aggregated.total += file_stats.total
             aggregated.imported += file_stats.imported
             aggregated.skipped_ecosystem += file_stats.skipped_ecosystem

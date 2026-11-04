@@ -23,3 +23,10 @@ logs resumidos. `scripts/validate_release.py` reproduce escenarios y carga local
 Los datos son sintéticos; ninguna firma, hora de autor, aprobación ni ahorro industrial
 se deduce de este estado técnico. UAT, capacitación, acta y acuerdo SLA requieren
 participación real y no se marcan completados.
+
+### Refinamiento de sincronización incremental
+
+La marca global se actualiza al terminar el conjunto y sirve como registro. La decisión
+de omitir se compara contra la fecha del aviso ya persistido, no sólo contra la marca
+global. Un aviso aún no importado se incorpora aunque su fecha sea anterior a la última
+sincronización; una regresión adicional conserva ese contrato.

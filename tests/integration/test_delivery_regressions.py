@@ -127,3 +127,13 @@ def test_legacy_cache_migration_preserves_rows_and_accepts_depth_domain(tmp_path
             )
 
     c.close()
+
+
+def test_incremental_imports_unseen_record_even_if_older_than_watermark(tmp_path):
+    first = tmp_path / "first.jsonl"
+    first.write_text(json.dumps(record("SEEN")) + "\n")
+    db = tmp_path / "osv.db"
+    sync_osv(db, first, incremental=True)
+    later = tmp_path / "later.jsonl"
+    later.write_text(json.dumps(record("UNSEEN")) + "\n")
+    assert sync_osv(db, later, incremental=True).imported == 1

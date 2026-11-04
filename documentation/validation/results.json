@@ -19,7 +19,7 @@
         "--no-cache"
       ],
       "returncode": 1,
-      "seconds": 0.4911350999998376,
+      "seconds": 0.42190303699999276,
       "stdout": "",
       "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/linear_reachable; falling back to the current environment.\n",
       "case": "linear_reachable",
@@ -41,7 +41,7 @@
         "--no-cache"
       ],
       "returncode": 1,
-      "seconds": 0.4767666200000349,
+      "seconds": 0.3904857950001315,
       "stdout": "",
       "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/dynamic_import; falling back to the current environment.\n",
       "case": "dynamic_import",
@@ -63,7 +63,7 @@
         "--no-cache"
       ],
       "returncode": 1,
-      "seconds": 0.47810535100006746,
+      "seconds": 0.39004439599966645,
       "stdout": "",
       "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/depth_limit; falling back to the current environment.\n",
       "case": "depth_limit",
@@ -85,7 +85,7 @@
         "--no-cache"
       ],
       "returncode": 0,
-      "seconds": 0.47461194400011664,
+      "seconds": 0.37655791200040767,
       "stdout": "",
       "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/transitive_unreachable; falling back to the current environment.\n",
       "case": "transitive_unreachable",
@@ -107,7 +107,7 @@
         "--no-cache"
       ],
       "returncode": 0,
-      "seconds": 0.47630512000000635,
+      "seconds": 1.8382087569998475,
       "stdout": "",
       "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/package_unused; falling back to the current environment.\n",
       "case": "package_unused",
@@ -125,7 +125,7 @@
         "--no-cache"
       ],
       "returncode": 1,
-      "seconds": 0.4722114749999946,
+      "seconds": 0.3989029199997276,
       "stdout": "",
       "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/linear_reachable; falling back to the current environment.\n",
       "case": "sarif_schema",
@@ -136,7 +136,7 @@
         "--help"
       ],
       "returncode": 0,
-      "seconds": 0.33039861499992185,
+      "seconds": 0.2817655499998182,
       "stdout": "usage: pyreach [-h] [-m MANIFEST] [-d DB_PATH] [-o OUTPUT] [-e ENTRY_POINT]\n               [-k MAX_DEPTH] [--include-potentially] [--include-all]\n               [--no-fail] [-f {sarif,json,text}] [--exclude EXCLUDE]\n               [--cache | --no-cache] [-v] [-q] [--version]\n               [project_path]\n\nLocal static vulnerability reachability analysis\n\npositional arguments:\n  project_path          Python project root (or sync-osv)\n\noptions:\n  -h, --help            show this help message and exit\n  -m, --manifest MANIFEST\n  -d, --db-path DB_PATH\n  -o, --output OUTPUT\n  -e, --entry-point ENTRY_POINT\n  -k, --max-depth MAX_DEPTH\n                        Maximum call depth, 0..7 (default 5)\n  --include-potentially\n  --include-all\n  --no-fail\n  -f, --format {sarif,json,text}\n  --exclude EXCLUDE\n  --cache, --no-cache   Reuse a content-addressed graph in the user's cache\n                        directory\n  -v, --verbose\n  -q, --quiet\n  --version             show program's version number and exit\n\nExamples: pyreach ./project -d osv.db -f text; pyreach sync-osv --source\nadvisories.jsonl\n",
       "stderr": "",
       "case": "help",
@@ -152,7 +152,7 @@
         "8"
       ],
       "returncode": 2,
-      "seconds": 0.37513269900000523,
+      "seconds": 0.2849170869999398,
       "stdout": "",
       "stderr": "[ERROR] max_depth must be an integer in [0, 7]\n",
       "case": "bad_depth",
@@ -169,7 +169,7 @@
         "/tmp/pfc-release-evidence/override.sarif"
       ],
       "returncode": 0,
-      "seconds": 0.5209803000000193,
+      "seconds": 0.4049109259999568,
       "stdout": "",
       "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/linear_reachable; falling back to the current environment.\n",
       "case": "no_fail",
@@ -183,7 +183,7 @@
         "/tmp/pfc-release-evidence/missing.db"
       ],
       "returncode": 2,
-      "seconds": 0.3533482519999325,
+      "seconds": 0.34232079299999896,
       "stdout": "",
       "stderr": "[ERROR] Missing local OSV database: /tmp/pfc-release-evidence/missing.db. Run pyreach sync-osv --source FILE first.\n",
       "case": "missing_db",
@@ -209,7 +209,7 @@
           "/tmp/pfc-release-evidence/load-0.json"
         ],
         "returncode": 1,
-        "seconds": 0.6485354289998213,
+        "seconds": 0.526263697000104,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -236,7 +236,7 @@
           "/tmp/pfc-release-evidence/load-1.json"
         ],
         "returncode": 1,
-        "seconds": 0.6465778050001063,
+        "seconds": 0.547760966000169,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -263,7 +263,7 @@
           "/tmp/pfc-release-evidence/load-2.json"
         ],
         "returncode": 1,
-        "seconds": 0.6679461199998968,
+        "seconds": 0.49135200099999565,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -293,7 +293,7 @@
           "/tmp/pfc-release-evidence/load-3.json"
         ],
         "returncode": 1,
-        "seconds": 1.1865616630000204,
+        "seconds": 0.7694859660000475,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -320,7 +320,7 @@
           "/tmp/pfc-release-evidence/load-4.json"
         ],
         "returncode": 1,
-        "seconds": 1.1046082420000403,
+        "seconds": 0.7088338070002465,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -347,7 +347,7 @@
           "/tmp/pfc-release-evidence/load-5.json"
         ],
         "returncode": 1,
-        "seconds": 1.0964533649998884,
+        "seconds": 0.6881851690000076,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -374,7 +374,7 @@
           "/tmp/pfc-release-evidence/load-6.json"
         ],
         "returncode": 1,
-        "seconds": 1.2272965789998125,
+        "seconds": 0.7822249750001902,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -401,7 +401,7 @@
           "/tmp/pfc-release-evidence/load-7.json"
         ],
         "returncode": 1,
-        "seconds": 1.2927617440000176,
+        "seconds": 2.3428390760000184,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -428,7 +428,7 @@
           "/tmp/pfc-release-evidence/load-8.json"
         ],
         "returncode": 1,
-        "seconds": 1.0427802919998612,
+        "seconds": 2.370436859000165,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -455,7 +455,7 @@
           "/tmp/pfc-release-evidence/load-9.json"
         ],
         "returncode": 1,
-        "seconds": 1.2648022949999813,
+        "seconds": 2.452601973000128,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -482,7 +482,7 @@
           "/tmp/pfc-release-evidence/load-10.json"
         ],
         "returncode": 1,
-        "seconds": 0.9973784210001213,
+        "seconds": 2.336653861999821,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -509,7 +509,7 @@
           "/tmp/pfc-release-evidence/load-11.json"
         ],
         "returncode": 1,
-        "seconds": 0.8655126310000014,
+        "seconds": 0.7297072460000891,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -536,7 +536,7 @@
           "/tmp/pfc-release-evidence/load-12.json"
         ],
         "returncode": 1,
-        "seconds": 0.8459339410001121,
+        "seconds": 0.7199126679997789,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -563,7 +563,7 @@
           "/tmp/pfc-release-evidence/load-13.json"
         ],
         "returncode": 1,
-        "seconds": 0.8162192699999196,
+        "seconds": 0.7335098389999075,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -590,7 +590,7 @@
           "/tmp/pfc-release-evidence/load-14.json"
         ],
         "returncode": 1,
-        "seconds": 0.8023519670000496,
+        "seconds": 0.7030546800001503,
         "stdout": "",
         "stderr": "[WARNING] No project virtualenv (.venv/venv) found under /tmp/pfc-release-evidence/load_corpus; falling back to the current environment.\n",
         "summary": {
@@ -605,10 +605,10 @@
         }
       }
     ],
-    "p50_seconds": 1.0696168284998748,
-    "p95_seconds": 1.2927617440000176,
+    "p50_seconds": 0.7514979024999775,
+    "p95_seconds": 2.452601973000128,
     "p95_method": "nearest-rank ceil(0.95*N), N=12",
-    "max_seconds": 1.2927617440000176,
+    "max_seconds": 2.452601973000128,
     "budget_seconds": 45,
     "all_within_budget": true,
     "controlled_reduction_percent": 80.0

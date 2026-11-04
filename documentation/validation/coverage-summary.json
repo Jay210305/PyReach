@@ -1,12 +1,12 @@
 {
   "totals": {
-    "covered_lines": 2431,
-    "num_statements": 2531,
-    "percent_covered": 96.04899249308573,
+    "covered_lines": 2425,
+    "num_statements": 2525,
+    "percent_covered": 96.03960396039604,
     "percent_covered_display": "96",
     "missing_lines": 100,
     "excluded_lines": 12,
-    "percent_statements_covered": 96.04899249308573,
+    "percent_statements_covered": 96.03960396039604,
     "percent_statements_covered_display": "96"
   },
   "files": {
@@ -211,13 +211,13 @@
       "percent_statements_covered_display": "100"
     },
     "pyreach/osv/importer.py": {
-      "covered_lines": 136,
-      "num_statements": 146,
-      "percent_covered": 93.15068493150685,
+      "covered_lines": 130,
+      "num_statements": 140,
+      "percent_covered": 92.85714285714286,
       "percent_covered_display": "93",
       "missing_lines": 10,
       "excluded_lines": 0,
-      "percent_statements_covered": 93.15068493150685,
+      "percent_statements_covered": 92.85714285714286,
       "percent_statements_covered_display": "93"
     },
     "pyreach/osv/mapper.py": {

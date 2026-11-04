@@ -24,3 +24,10 @@ Aceptado para la entrega técnica; aceptación organizacional pendiente.
    para montar sólo el archivo en lectura, y ejecuta con `--network none`.
 9. La suite técnica y los manuales no sustituyen UAT, capacitación, validación por
    tercero, acta de conformidad ni experimento industrial de OE4.
+
+### Refinamiento de sincronización incremental
+
+La marca global se actualiza al terminar el conjunto y sirve como registro. La decisión
+de omitir se compara contra la fecha del aviso ya persistido, no sólo contra la marca
+global. Un aviso aún no importado se incorpora aunque su fecha sea anterior a la última
+sincronización; una regresión adicional conserva ese contrato.

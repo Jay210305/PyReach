@@ -89,3 +89,10 @@ reduction, comprehensive Python soundness, Lidercom deployment, user acceptance 
 manual validation by a third party. Runtime metaprogramming remains approximated.
 Use explicit entry points for unsupported framework patterns. No production deployment,
 user signature or financial measurement is fabricated in the release evidence.
+
+### Refinamiento de sincronización incremental
+
+La marca global se actualiza al terminar el conjunto y sirve como registro. La decisión
+de omitir se compara contra la fecha del aviso ya persistido, no sólo contra la marca
+global. Un aviso aún no importado se incorpora aunque su fecha sea anterior a la última
+sincronización; una regresión adicional conserva ese contrato.

@@ -20,7 +20,7 @@
   "pyreach/loaders/packages.py": "bff658c166da321d592ec3842047e2fea752109b7e0da978e41c2059debff1f6",
   "pyreach/loaders/source.py": "57e37be3c3446f73dd3fa198a1381f3fcaf9952f87cd2fdbbb9e2ef55ae662ed",
   "pyreach/osv/__init__.py": "eb156637e94bcce10264d69a583ef666c35db854bba82f95558bb566e6e0654c",
-  "pyreach/osv/importer.py": "47fa337fdae6b7be2041a574886bc6c64b39b36d7f6e0ec1deb87e00603527a8",
+  "pyreach/osv/importer.py": "a96298d29c31519dc2c9df34e5e70034e59e709bbf58e13c3b4ee6526257592d",
   "pyreach/osv/mapper.py": "5c4208ca79114c78e835ffa046065e0353c8b963bf1d629de3cb4626f762f8a0",
   "pyreach/output/__init__.py": "604e57f3aa2fe8bd7183148e902930f6ebbd9f604b8fa07b0be2cfb8f01935a8",
   "pyreach/output/sarif.py": "27fe8180a2a84a9624a613741fd0096c5e7b240338106125af7d5e19cf43eac2",
