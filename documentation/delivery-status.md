@@ -30,3 +30,11 @@ La marca global se actualiza al terminar el conjunto y sirve como registro. La d
 de omitir se compara contra la fecha del aviso ya persistido, no sólo contra la marca
 global. Un aviso aún no importado se incorpora aunque su fecha sea anterior a la última
 sincronización; una regresión adicional conserva ese contrato.
+
+## Control remoto de seguridad
+
+El pipeline de 02852d3 pasó lint, tipos y pruebas, pero detectó dos avisos Bandit
+B608 de confianza baja por concatenación de DDL empaquetado. Se reemplazó la
+construcción por un archivo SQL estático versionado, preservando la transacción
+y la regresión de migración. Repetición local: cero hallazgos, sin exclusiones.
+Se conserva security-ci-before-fix.json como evidencia del fallo anterior.

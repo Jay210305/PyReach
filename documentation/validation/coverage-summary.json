@@ -1,12 +1,12 @@
 {
   "totals": {
-    "covered_lines": 2425,
-    "num_statements": 2525,
-    "percent_covered": 96.03960396039604,
+    "covered_lines": 2426,
+    "num_statements": 2526,
+    "percent_covered": 96.04117181314331,
     "percent_covered_display": "96",
     "missing_lines": 100,
     "excluded_lines": 12,
-    "percent_statements_covered": 96.03960396039604,
+    "percent_statements_covered": 96.04117181314331,
     "percent_statements_covered_display": "96"
   },
   "files": {
@@ -141,13 +141,13 @@
       "percent_statements_covered_display": "100"
     },
     "pyreach/db/connection.py": {
-      "covered_lines": 37,
-      "num_statements": 42,
-      "percent_covered": 88.0952380952381,
+      "covered_lines": 38,
+      "num_statements": 43,
+      "percent_covered": 88.37209302325581,
       "percent_covered_display": "88",
       "missing_lines": 5,
       "excluded_lines": 0,
-      "percent_statements_covered": 88.0952380952381,
+      "percent_statements_covered": 88.37209302325581,
       "percent_statements_covered_display": "88"
     },
     "pyreach/db/repositories.py": {
