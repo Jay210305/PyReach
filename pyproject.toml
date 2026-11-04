@@ -91,3 +91,6 @@ packages = ["pyreach"]
 [tool.coverage.run]
 source = ["pyreach"]
 patch = ["subprocess"]
+
+[tool.ruff.format]
+exclude = ["*.md"]
