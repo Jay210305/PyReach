@@ -54,6 +54,20 @@ def initialize_database(db_path: str | Path) -> None:
     schema_sql = resources.files("pyreach.db").joinpath("schema.sql").read_text(encoding="utf-8")
     with get_db_connection(db_path) as conn:
         conn.executescript(schema_sql)
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name = 'reachability_results'"
+        ).fetchone()
+        if row and "BETWEEN 1 AND 5" in row[0]:
+            conn.executescript(
+                "BEGIN IMMEDIATE;"
+                "ALTER TABLE reachability_results RENAME TO legacy_reachability_results;"
+                "DROP INDEX IF EXISTS idx_reachability_symbol;"
+                "DROP INDEX IF EXISTS idx_reachability_entry;"
+                + schema_sql
+                + "INSERT INTO reachability_results SELECT * FROM legacy_reachability_results;"
+                "DROP TABLE legacy_reachability_results;"
+                "COMMIT;"
+            )
         version = get_schema_version(conn)
         if version < 1:
             raise DatabaseError("Schema initialization failed to record schema_version.")

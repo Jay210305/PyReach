@@ -81,16 +81,14 @@ def test_depth_limit_exceeded() -> None:
         graph.add_edge(f"n{i}", f"n{i + 1}")
     vuln = _make_vuln(package="n6", symbols=("n6",))
     result = analyze_reachability(graph, ["n0"], [vuln], max_depth=5)[("TEST-1", "n6")]
-    assert result.status == "NOT_REACHABLE"
+    assert result.status == "POTENTIALLY_REACHABLE"
     assert "depth limit" in result.reasoning
 
 
 def test_cycle_handling() -> None:
     graph = nx.DiGraph()
     graph.add_edges_from([("a", "b"), ("b", "a"), ("a", "pkg.func")])
-    result = analyze_reachability(graph, ["a"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
-    ]
+    result = analyze_reachability(graph, ["a"], [_make_vuln()], max_depth=5)[("TEST-1", "pkg.func")]
     assert result.status == "REACHABLE"
 
 
@@ -98,9 +96,7 @@ def test_pure_cycle_not_reachable() -> None:
     graph = nx.DiGraph()
     graph.add_edges_from([("a", "b"), ("b", "a")])
     graph.add_node("pkg.func")
-    result = analyze_reachability(graph, ["a"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
-    ]
+    result = analyze_reachability(graph, ["a"], [_make_vuln()], max_depth=5)[("TEST-1", "pkg.func")]
     assert result.status == "NOT_REACHABLE"
 
 
@@ -146,9 +142,9 @@ def test_application_imports_excludes_library_nodes() -> None:
     graph.add_node("main")
     graph.add_node("pkg.other")
     vuln = _make_vuln(package="pkg", symbols=("pkg.func",))
-    result = analyze_reachability(
-        graph, ["main"], [vuln], max_depth=5, application_imports=set()
-    )[("TEST-1", "pkg.func")]
+    result = analyze_reachability(graph, ["main"], [vuln], max_depth=5, application_imports=set())[
+        ("TEST-1", "pkg.func")
+    ]
     assert result.status == "NOT_REACHABLE"
 
 
@@ -265,7 +261,7 @@ def test_depth_exceeded_with_tail_nodes() -> None:
     graph.add_node("n8")
     vuln = _make_vuln(package="n8", symbols=("n8",))
     result = analyze_reachability(graph, ["n0"], [vuln], max_depth=5)[("TEST-1", "n8")]
-    assert result.status == "NOT_REACHABLE"
+    assert result.status == "POTENTIALLY_REACHABLE"
     assert "depth limit" in result.reasoning
 
 
@@ -278,10 +274,6 @@ def test_package_cache_reuse_two_symbols() -> None:
     )
     results = analyze_reachability(graph, ["main"], [vuln], max_depth=5)
     assert (
-        results[("TEST-1", "requests.sessions.Session.request")].status
-        == "POTENTIALLY_REACHABLE"
+        results[("TEST-1", "requests.sessions.Session.request")].status == "POTENTIALLY_REACHABLE"
     )
-    assert (
-        results[("TEST-1", "requests.sessions.Session.close")].status
-        == "POTENTIALLY_REACHABLE"
-    )
+    assert results[("TEST-1", "requests.sessions.Session.close")].status == "POTENTIALLY_REACHABLE"

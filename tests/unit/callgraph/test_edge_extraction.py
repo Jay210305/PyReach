@@ -343,11 +343,11 @@ def test_lambda_body_call() -> None:
     _edge_data(graph, "<lambda>:test.py:2", "test.helper")
 
 
-def test_module_level_call_skipped() -> None:
+def test_module_level_call_has_explicit_entry() -> None:
     mod = _make_module("helper()\ndef helper():\n    pass\n", "test")
     graph = _build_graph([mod])
     assert graph.get_edge_data("test.helper", "test.helper") is None
-    assert graph.number_of_edges() == 0
+    assert graph.has_edge("test.__main__", "test.helper")
 
 
 def test_cross_module_inheritance_via_import() -> None:

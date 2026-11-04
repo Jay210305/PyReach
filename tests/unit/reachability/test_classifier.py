@@ -113,7 +113,7 @@ def test_never_false_negative_matrix() -> None:
         # unimported package is NOT_REACHABLE regardless of dynamic edges
         # elsewhere (matrix row 4).
         certain = (not package_imported and not unresolved) or (
-            package_imported and exact and not dynamic and not unresolved
+            package_imported and exact and not dynamic and not unresolved and not depth
         )
         expected = "NOT_REACHABLE" if certain else "POTENTIALLY_REACHABLE"
         assert result.status == expected, (package_imported, exact, dynamic, unresolved, depth)

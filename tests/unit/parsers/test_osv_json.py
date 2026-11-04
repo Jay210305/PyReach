@@ -61,9 +61,7 @@ def test_severity_mapping() -> None:
 def test_cvss_vector_score_parsed() -> None:
     record = {
         "id": "GHSA-VECTOR",
-        "severity": [
-            {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}
-        ],
+        "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}],
         "affected": [
             {
                 "package": {"name": "requests", "ecosystem": "PyPI"},
@@ -80,9 +78,7 @@ def test_cvss_vector_score_parsed() -> None:
 def test_cvss_vector_critical() -> None:
     record = {
         "id": "GHSA-CRITICAL",
-        "severity": [
-            {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
-        ],
+        "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}],
         "affected": [
             {
                 "package": {"name": "requests", "ecosystem": "PyPI"},

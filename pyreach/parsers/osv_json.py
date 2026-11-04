@@ -65,9 +65,10 @@ def _cvss31_base_score(vector: str) -> float | None:
     if scope == "U":
         impact = Decimal("6.42") * iss
     else:
-        impact = Decimal("7.52") * (iss - Decimal("0.029")) - Decimal("3.25") * (
-            iss - Decimal("0.02")
-        ) ** 15
+        impact = (
+            Decimal("7.52") * (iss - Decimal("0.029"))
+            - Decimal("3.25") * (iss - Decimal("0.02")) ** 15
+        )
     exploitability = Decimal("8.22") * av * ac * pr * ui
 
     if impact <= 0:
@@ -203,7 +204,9 @@ def _extract_ranges(item: dict[str, Any]) -> list[tuple[str | None, str | None, 
     return ranges
 
 
-def extract_affected(record: dict[str, Any]) -> list[AffectedSymbol]:
+def extract_affected(
+    record: dict[str, Any], package_name: str | None = None
+) -> list[AffectedSymbol]:
     """Extract affected symbols and their version ranges from PyPI blocks.
 
     One :class:`AffectedSymbol` is emitted per (symbol, range) so multi-range
@@ -221,6 +224,8 @@ def extract_affected(record: dict[str, Any]) -> list[AffectedSymbol]:
         if not isinstance(package, dict) or package.get("ecosystem") != "PyPI":
             continue
 
+        if package_name is not None and normalize_name(package.get("name", "")) != package_name:
+            continue
         for symbol in _extract_symbols(item):
             for introduced, upper, inclusive in _extract_ranges(item):
                 results.append(AffectedSymbol(symbol, introduced, upper, inclusive))

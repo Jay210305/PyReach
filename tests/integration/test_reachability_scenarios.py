@@ -26,7 +26,7 @@ SCENARIOS = [
     ("linear_reachable", "REACHABLE"),
     ("transitive_unreachable", "NOT_REACHABLE"),
     ("dynamic_import", "POTENTIALLY_REACHABLE"),
-    ("depth_limit", "NOT_REACHABLE"),
+    ("depth_limit", "POTENTIALLY_REACHABLE"),
     ("package_unused", "NOT_REACHABLE"),
 ]
 
@@ -91,7 +91,7 @@ def test_linear_reachable_path_matches_chain(tmp_path: Path) -> None:
 
 
 def test_not_reachable_scenarios_have_no_path(tmp_path: Path) -> None:
-    for scenario in ("transitive_unreachable", "depth_limit", "package_unused"):
+    for scenario in ("transitive_unreachable", "package_unused"):
         clear_cache()
         project = _copy_project(scenario, tmp_path)
         modules, index = _run_ast_pipeline(project)

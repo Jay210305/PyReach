@@ -301,6 +301,25 @@ class EdgeExtractor(ast.NodeVisitor):
         self._saved_scopes.clear()
         self.visit(self.module.tree)
 
+    def visit_Module(self, node: ast.Module) -> None:
+        for statement in node.body:
+            if isinstance(
+                statement,
+                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Import, ast.ImportFrom),
+            ):
+                self.visit(statement)
+            elif any(isinstance(child, ast.Call) for child in ast.walk(statement)):
+                entry = f"{self.module.module_fqn}.__main__"
+                self.graph.add_node(
+                    entry,
+                    file_path=self.module.file_path,
+                    line_number=getattr(statement, "lineno", None),
+                    node_type="FUNCTION",
+                )
+                self._scope.append((entry, False))
+                self.visit(statement)
+                self._scope.pop()
+
     @property
     def _caller(self) -> str | None:
         return self._scope[-1][0] if self._scope else None
@@ -644,6 +663,13 @@ class CallGraphEngine:
             extractor = NodeExtractor(module, graph)
             for node in extractor.extract():
                 self._update_stats(node.node_type)
+
+        for name, attrs in list(graph.nodes(data=True)):
+            if attrs.get("node_type") == "CLASS":
+                for method in ("__new__", "__init__"):
+                    initializer = f"{name}.{method}"
+                    if initializer in graph:
+                        add_edge(graph, name, initializer, "STATIC", CONF_STATIC)
 
         _build_inheritance_edges(ordered, graph, self._resolver)
 

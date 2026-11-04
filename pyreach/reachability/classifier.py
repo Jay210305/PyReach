@@ -55,7 +55,7 @@ class ReachabilityClassifier:
     3. Any dynamic/unresolved signal on the path -> ``POTENTIALLY_REACHABLE``.
     4. Package imported but exact symbol node absent -> ``POTENTIALLY_REACHABLE``.
     5. Exact node exists but imports unresolved -> ``POTENTIALLY_REACHABLE``.
-    6. Depth limit reached with no dynamic -> ``NOT_REACHABLE``.
+    6. Depth limit reached -> ``POTENTIALLY_REACHABLE``.
     7. Otherwise (no path, clean) -> ``NOT_REACHABLE``.
 
     Rule 2 precedes rule 3 so a dynamic edge elsewhere in the graph cannot turn
@@ -81,7 +81,7 @@ class ReachabilityClassifier:
             return self._result(context, "POTENTIALLY_REACHABLE", REASON_UNRESOLVED_IMPORTS)
 
         if context.max_depth_exceeded or evidence.depth_exceeded:
-            return self._result(context, "NOT_REACHABLE", REASON_DEPTH)
+            return self._result(context, "POTENTIALLY_REACHABLE", REASON_DEPTH)
 
         return self._result(context, "NOT_REACHABLE", REASON_NO_PATH)
 

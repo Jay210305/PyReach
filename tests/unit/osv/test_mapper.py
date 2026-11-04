@@ -11,9 +11,7 @@ def _import_records(tmp_path: Path, records: list[dict]) -> Path:
     initialize_database(db_path)
     jsonl = tmp_path / "records.jsonl"
 
-    jsonl.write_text(
-        "\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8"
-    )
+    jsonl.write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")
     OSVImporter(db_path).import_file(jsonl)
     return db_path
 

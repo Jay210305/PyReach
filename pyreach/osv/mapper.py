@@ -9,6 +9,7 @@ half lives in :mod:`pyreach.parsers.osv_json`; the persistence half lives in
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
 
@@ -93,9 +94,7 @@ class VulnerabilityMapper:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def find_by_package_and_version(
-        self, package_name: str, version: str
-    ) -> list[Vulnerability]:
+    def find_by_package_and_version(self, package_name: str, version: str) -> list[Vulnerability]:
         """Return advisories affecting *package_name* at *version*.
 
         An advisory matches when any of its stored ``(introduced, fixed)``
@@ -103,9 +102,15 @@ class VulnerabilityMapper:
         :func:`is_version_affected`.
         """
         norm_pkg = normalize_name(package_name)
-        rows = self._conn.execute(
-            "SELECT * FROM advisories WHERE package_name = ?;", (norm_pkg,)
-        ).fetchall()
+        has_index = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = 'advisory_packages'"
+        ).fetchone()
+        query = "SELECT * FROM advisories WHERE package_name = ?"
+        params = [norm_pkg]
+        if has_index:
+            query += " OR id IN (SELECT advisory_id FROM advisory_packages WHERE package_name = ?)"
+            params.append(norm_pkg)
+        rows = self._conn.execute(query, params).fetchall()
 
         matching: list[Vulnerability] = []
         for row in rows:
@@ -116,6 +121,24 @@ class VulnerabilityMapper:
                 (advisory_id,),
             ).fetchall()
 
+            raw_json = row["raw_json"]
+            if raw_json:
+                from pyreach.parsers.osv_json import extract_affected
+
+                try:
+                    record = json.loads(raw_json)
+                    if isinstance(record, dict) and isinstance(record.get("affected"), list):
+                        sym_rows = [
+                            {
+                                "symbol_fqn": item.symbol_fqn,
+                                "version_introduced": item.version_introduced,
+                                "version_fixed": item.version_fixed,
+                                "version_fixed_inclusive": item.version_fixed_inclusive,
+                            }
+                            for item in extract_affected(record, norm_pkg)
+                        ]
+                except (ValueError, TypeError):
+                    pass
             is_affected = not sym_rows
             symbols: list[str] = []
             intro_val: str | None = None
@@ -123,8 +146,6 @@ class VulnerabilityMapper:
 
             for sym_row in sym_rows:
                 s_fqn = sym_row["symbol_fqn"]
-                if s_fqn not in symbols:
-                    symbols.append(s_fqn)
                 intro = sym_row["version_introduced"]
                 fixed = sym_row["version_fixed"]
                 inclusive = bool(sym_row["version_fixed_inclusive"])
@@ -134,13 +155,15 @@ class VulnerabilityMapper:
                     fixed_val = fixed
                 if is_version_affected(version, intro, fixed, inclusive):
                     is_affected = True
+                    if s_fqn not in symbols:
+                        symbols.append(s_fqn)
 
             if is_affected:
                 matching.append(
                     Vulnerability(
                         osv_id=row["osv_id"],
                         cve_id=row["cve_id"],
-                        package_name=row["package_name"],
+                        package_name=norm_pkg,
                         severity_score=row["severity_score"],
                         severity_level=row["severity_level"],
                         summary=row["summary"] or "",
