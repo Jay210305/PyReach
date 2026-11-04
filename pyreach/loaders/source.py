@@ -21,6 +21,7 @@ DEFAULT_EXCLUDES: frozenset[str] = frozenset(
         "__pycache__",
         "node_modules",
         ".git",
+        ".pyreach-cache",
         "build",
         "dist",
         ".mypy_cache",

@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "networkx>=3.0",
+    "networkx>=3.4.2",
     "jsonschema>=4.0",
     "packaging>=23.0",
     "pyyaml>=6.0",
@@ -36,12 +36,12 @@ dev = [
     "black>=23.0",
     "mypy>=1.0",
     "ruff>=0.1.0",
+    "bandit>=1.9.4",
+    "pip-audit>=2.10.1",
 ]
 
-# The PyReach package is not implemented yet; flip to `package = true`
-# (and add a [build-system]) once the `pyreach/` package exists.
 [tool.uv]
-package = false
+package = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -76,3 +76,17 @@ warn_redundant_casts = true
 disallow_untyped_defs = true
 no_implicit_optional = true
 disable_error_code = ["import-untyped"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+pyreach = "pyreach.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyreach"]
+
+[tool.coverage.run]
+source = ["pyreach"]
+patch = ["subprocess"]
