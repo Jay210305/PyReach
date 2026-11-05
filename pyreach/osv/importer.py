@@ -1,8 +1,14 @@
 """OSV JSON streaming importer and synchronization."""
 
 import json
+import shutil
 import sqlite3
+import tempfile
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,6 +44,34 @@ def iter_osv_records(path: Path) -> Iterator[dict[str, Any] | None]:
     without aborting the stream. JSON arrays are loaded whole (they are small
     compared to the JSONL bulk dumps).
     """
+    if path.suffix.lower() == ".zip":
+        try:
+            with zipfile.ZipFile(path) as archive:
+                for name in sorted(archive.namelist()):
+                    if not name.lower().endswith(".json"):
+                        continue
+                    try:
+                        with archive.open(name) as member:
+                            record = json.load(member)
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        yield None
+                        continue
+                    yield record if isinstance(record, dict) else None
+        except zipfile.BadZipFile as exc:
+            raise OSVError(f"Invalid OSV zip archive: {path}") from exc
+        return
+    if path.suffix.lower() == ".json":
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            yield None
+            return
+        if isinstance(data, list):
+            for record in data:
+                yield record if isinstance(record, dict) else None
+        else:
+            yield data if isinstance(data, dict) else None
+        return
     with path.open("r", encoding="utf-8", errors="replace") as f:
         first = f.read(1)
         while first and first.isspace():
@@ -173,13 +207,21 @@ def sync_osv(
     source: str | Path,
     incremental: bool = False,
 ) -> ImportStats:
-    """Entry point for syncing OSV database from a local file or directory."""
+    """Import a local OSV dump or download one over HTTPS for this sync only."""
     source_str = str(source)
+    if source_str.startswith("https://"):
+        suffix = Path(urllib.parse.urlsplit(source_str).path).suffix or ".zip"
+        with tempfile.TemporaryDirectory(prefix="pyreach-osv-") as temporary:
+            downloaded = Path(temporary) / f"download{suffix}"
+            try:
+                with urllib.request.urlopen(source_str, timeout=60) as response:
+                    with downloaded.open("wb") as destination:
+                        shutil.copyfileobj(response, destination)
+            except (OSError, urllib.error.URLError) as exc:
+                raise OSVError(f"Failed to download OSV data from {source_str}: {exc}") from exc
+            return OSVImporter(db_path, incremental=incremental).import_file(downloaded)
     if source_str.startswith(_NETWORK_SCHEMES):
-        raise OSVError(
-            f"Network download is not supported: {source}. "
-            "Please provide a path to a local OSV JSONL file or directory."
-        )
+        raise OSVError("OSV downloads require HTTPS.")
 
     source_path = Path(source).expanduser().resolve()
     importer = OSVImporter(db_path, incremental=incremental)
@@ -190,7 +232,12 @@ def sync_osv(
     if source_path.is_dir():
         aggregated = ImportStats()
         start = time.monotonic()
-        for f in sorted(source_path.glob("*.jsonl")):
+        files = sorted(
+            f
+            for f in source_path.iterdir()
+            if f.is_file() and f.suffix.lower() in {".jsonl", ".json", ".zip"}
+        )
+        for f in files:
             file_stats = importer.import_file(f)
             aggregated.total += file_stats.total
             aggregated.imported += file_stats.imported

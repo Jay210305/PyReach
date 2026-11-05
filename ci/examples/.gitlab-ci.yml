@@ -1,0 +1,32 @@
+# Example consumer pipeline: PyReach gate on a synthetic project (S4-T6).
+#
+# Runs the shared template against tests/fixtures/projects/linear_reachable.
+# In production the include points at the template published from this repo
+# and PYREACH_DB_PATH points at the runner pre-seeded database.
+
+include:
+  - local: ci/gitlab/.pyreach-scan.yml
+
+stages:
+  - test
+  - security
+  - security_gate
+
+variables:
+  PYREACH_PROJECT_PATH: "tests/fixtures/projects/linear_reachable"
+  PYREACH_OUTPUT: "pyreach-results.sarif"
+
+unit_tests:
+  stage: test
+  image: python:3.10-slim
+  before_script:
+    - pip install uv
+    - uv sync --locked
+  script:
+    - uv run pytest -m "not performance" -q
+
+pyreach_scan:
+  extends: .pyreach-scan
+
+pyreach_gate:
+  extends: .pyreach-gate

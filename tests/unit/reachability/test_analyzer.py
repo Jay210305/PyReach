@@ -46,7 +46,7 @@ def test_reachable_direct() -> None:
     graph = nx.DiGraph()
     graph.add_edges_from([("main", "a"), ("a", "pkg.func")])
     result = analyze_reachability(graph, ["main"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "REACHABLE"
     assert ["main", "a", "pkg.func"] in result.paths
@@ -58,7 +58,7 @@ def test_not_reachable() -> None:
     graph.add_node("main")
     graph.add_node("pkg.func")
     result = analyze_reachability(graph, ["main"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "NOT_REACHABLE"
     assert result.paths == []
@@ -70,7 +70,7 @@ def test_potentially_reachable_dynamic() -> None:
     graph.add_edge("a", "<DYNAMIC>", edge_type="DYNAMIC")
     graph.add_node("pkg.func")
     result = analyze_reachability(graph, ["main"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "POTENTIALLY_REACHABLE"
 
@@ -80,8 +80,8 @@ def test_depth_limit_exceeded() -> None:
     for i in range(6):
         graph.add_edge(f"n{i}", f"n{i + 1}")
     vuln = _make_vuln(package="n6", symbols=("n6",))
-    result = analyze_reachability(graph, ["n0"], [vuln], max_depth=5)[("TEST-1", "n6")]
-    assert result.status == "NOT_REACHABLE"
+    result = analyze_reachability(graph, ["n0"], [vuln], max_depth=5)[("TEST-1", "n6", "n6")]
+    assert result.status == "POTENTIALLY_REACHABLE"
     assert "depth limit" in result.reasoning
 
 
@@ -89,7 +89,7 @@ def test_cycle_handling() -> None:
     graph = nx.DiGraph()
     graph.add_edges_from([("a", "b"), ("b", "a"), ("a", "pkg.func")])
     result = analyze_reachability(graph, ["a"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "REACHABLE"
 
@@ -99,7 +99,7 @@ def test_pure_cycle_not_reachable() -> None:
     graph.add_edges_from([("a", "b"), ("b", "a")])
     graph.add_node("pkg.func")
     result = analyze_reachability(graph, ["a"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "NOT_REACHABLE"
 
@@ -125,7 +125,7 @@ def test_package_imported_fallback() -> None:
     graph.add_edge("main", "requests.get")
     vuln = _make_vuln(package="requests", symbols=("requests.sessions.Session.request",))
     result = analyze_reachability(graph, ["main"], [vuln], max_depth=5)[
-        ("TEST-1", "requests.sessions.Session.request")
+        ("TEST-1", "requests", "requests.sessions.Session.request")
     ]
     assert result.status == "POTENTIALLY_REACHABLE"
     assert "imported" in result.reasoning
@@ -136,7 +136,7 @@ def test_package_not_imported() -> None:
     graph.add_node("main")
     vuln = _make_vuln(package="requests", symbols=("requests.sessions.Session.request",))
     result = analyze_reachability(graph, ["main"], [vuln], max_depth=5)[
-        ("TEST-1", "requests.sessions.Session.request")
+        ("TEST-1", "requests", "requests.sessions.Session.request")
     ]
     assert result.status == "NOT_REACHABLE"
 
@@ -146,9 +146,9 @@ def test_application_imports_excludes_library_nodes() -> None:
     graph.add_node("main")
     graph.add_node("pkg.other")
     vuln = _make_vuln(package="pkg", symbols=("pkg.func",))
-    result = analyze_reachability(
-        graph, ["main"], [vuln], max_depth=5, application_imports=set()
-    )[("TEST-1", "pkg.func")]
+    result = analyze_reachability(graph, ["main"], [vuln], max_depth=5, application_imports=set())[
+        ("TEST-1", "pkg", "pkg.func")
+    ]
     assert result.status == "NOT_REACHABLE"
 
 
@@ -159,7 +159,7 @@ def test_application_imports_marks_imported() -> None:
     vuln = _make_vuln(package="pkg", symbols=("pkg.func",))
     result = analyze_reachability(
         graph, ["main"], [vuln], max_depth=5, application_imports={"pkg"}
-    )[("TEST-1", "pkg.func")]
+    )[("TEST-1", "pkg", "pkg.func")]
     assert result.status == "POTENTIALLY_REACHABLE"
 
 
@@ -171,7 +171,7 @@ def test_performance_100_nodes() -> None:
     vuln = _make_vuln(symbols=("n7",))
     tracemalloc.start()
     start = time.perf_counter()
-    result = analyze_reachability(graph, ["n0"], [vuln], max_depth=7)[("TEST-1", "n7")]
+    result = analyze_reachability(graph, ["n0"], [vuln], max_depth=7)[("TEST-1", "pkg", "n7")]
     elapsed = time.perf_counter() - start
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
@@ -187,7 +187,7 @@ def test_paths_are_short_and_bounded() -> None:
         graph.add_edge(entry, "mid")
     graph.add_edge("mid", "pkg.func")
     result = analyze_reachability(graph, entries, [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "REACHABLE"
     assert len(result.paths) <= MAX_PATHS
@@ -198,7 +198,7 @@ def test_entry_is_target() -> None:
     graph = nx.DiGraph()
     graph.add_node("pkg.func")
     result = analyze_reachability(graph, ["pkg.func"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "REACHABLE"
     assert result.paths == [["pkg.func"]]
@@ -222,9 +222,9 @@ def test_multiple_symbols_keyed_by_osv_and_fqn() -> None:
     graph.add_node("pkg.b")
     vuln = _make_vuln(symbols=("pkg.a", "pkg.b"))
     results = analyze_reachability(graph, ["main"], [vuln], max_depth=5)
-    assert set(results) == {("TEST-1", "pkg.a"), ("TEST-1", "pkg.b")}
-    assert results[("TEST-1", "pkg.a")].status == "REACHABLE"
-    assert results[("TEST-1", "pkg.b")].status == "NOT_REACHABLE"
+    assert set(results) == {("TEST-1", "pkg", "pkg.a"), ("TEST-1", "pkg", "pkg.b")}
+    assert results[("TEST-1", "pkg", "pkg.a")].status == "REACHABLE"
+    assert results[("TEST-1", "pkg", "pkg.b")].status == "NOT_REACHABLE"
 
 
 def test_shared_symbol_preserves_both_vulns() -> None:
@@ -233,16 +233,27 @@ def test_shared_symbol_preserves_both_vulns() -> None:
     v1 = _make_vuln(symbols=("pkg.func",), osv_id="A-1")
     v2 = _make_vuln(symbols=("pkg.func",), osv_id="B-2")
     results = analyze_reachability(graph, ["main"], [v1, v2], max_depth=5)
-    assert set(results) == {("A-1", "pkg.func"), ("B-2", "pkg.func")}
-    assert results[("A-1", "pkg.func")].vulnerability.osv_id == "A-1"
-    assert results[("B-2", "pkg.func")].vulnerability.osv_id == "B-2"
+    assert set(results) == {("A-1", "pkg", "pkg.func"), ("B-2", "pkg", "pkg.func")}
+    assert results[("A-1", "pkg", "pkg.func")].vulnerability.osv_id == "A-1"
+    assert results[("B-2", "pkg", "pkg.func")].vulnerability.osv_id == "B-2"
+
+
+def test_one_advisory_keeps_wildcards_for_two_packages() -> None:
+    graph = nx.DiGraph()
+    graph.add_node("main")
+    first = _make_vuln(package="first", symbols=("*",))
+    second = _make_vuln(package="second", symbols=("*",))
+    results = analyze_reachability(
+        graph, ["main"], [first, second], application_imports={"first", "second"}
+    )
+    assert {result.vulnerability.package_name for result in results.values()} == {"first", "second"}
 
 
 def test_result_is_reachability_result_type() -> None:
     graph = nx.DiGraph()
     graph.add_edge("main", "pkg.func")
     result = analyze_reachability(graph, ["main"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert isinstance(result, ReachabilityResult)
     assert result.vulnerability.osv_id == "TEST-1"
@@ -252,7 +263,7 @@ def test_entry_not_in_graph() -> None:
     graph = nx.DiGraph()
     graph.add_edge("main", "pkg.func")
     result = analyze_reachability(graph, ["missing"], [_make_vuln()], max_depth=5)[
-        ("TEST-1", "pkg.func")
+        ("TEST-1", "pkg", "pkg.func")
     ]
     assert result.status == "NOT_REACHABLE"
     assert result.entry_points_reached == []
@@ -264,9 +275,60 @@ def test_depth_exceeded_with_tail_nodes() -> None:
         graph.add_edge(f"n{i}", f"n{i + 1}")
     graph.add_node("n8")
     vuln = _make_vuln(package="n8", symbols=("n8",))
-    result = analyze_reachability(graph, ["n0"], [vuln], max_depth=5)[("TEST-1", "n8")]
-    assert result.status == "NOT_REACHABLE"
+    result = analyze_reachability(graph, ["n0"], [vuln], max_depth=5)[("TEST-1", "n8", "n8")]
+    assert result.status == "POTENTIALLY_REACHABLE"
     assert "depth limit" in result.reasoning
+
+
+def test_package_imported_normalizes_dash_underscore() -> None:
+    # OSV/manifest use PEP 503 "vuln-lib"; the app does `import vuln_lib`.
+    # Without normalization the package reads as not imported and a dynamic
+    # chain collapses to NOT_REACHABLE (false negative, R2).
+    graph = nx.DiGraph()
+    graph.add_edge("main", "a")
+    graph.add_edge("a", "<DYNAMIC>", edge_type="DYNAMIC")
+    graph.add_node("vuln_lib.risky")
+    vuln = _make_vuln(package="vuln-lib", symbols=("vuln_lib.risky",))
+    result = analyze_reachability(
+        graph, ["main"], [vuln], max_depth=5, application_imports={"vuln_lib"}
+    )[("TEST-1", "vuln-lib", "vuln_lib.risky")]
+    assert result.status == "POTENTIALLY_REACHABLE"
+
+
+def test_distribution_import_alias_keeps_unresolved_symbol_potential() -> None:
+    graph = nx.DiGraph()
+    graph.add_node("main")
+    vuln = _make_vuln(package="PyYAML", symbols=("yaml.load",))
+    result = analyze_reachability(graph, ["main"], [vuln], application_imports={"yaml"})[
+        ("TEST-1", "PyYAML", "yaml.load")
+    ]
+    assert result.status == "POTENTIALLY_REACHABLE"
+
+
+def test_distribution_import_alias_keeps_wildcard_potential() -> None:
+    graph = nx.DiGraph()
+    graph.add_node("main")
+    vuln = _make_vuln(package="PyYAML", symbols=("*",))
+    result = analyze_reachability(
+        graph,
+        ["main"],
+        [vuln],
+        application_imports={"yaml"},
+        package_import_names={"pyyaml": {"yaml"}},
+    )[("TEST-1", "PyYAML", "*")]
+    assert result.status == "POTENTIALLY_REACHABLE"
+
+
+def test_package_imported_fallback_normalizes_prefix() -> None:
+    graph = nx.DiGraph()
+    graph.add_edge("main", "a")
+    graph.add_edge("a", "<DYNAMIC>", edge_type="DYNAMIC")
+    graph.add_node("vuln_lib.other")
+    vuln = _make_vuln(package="vuln-lib", symbols=("vuln_lib.risky",))
+    result = analyze_reachability(graph, ["main"], [vuln], max_depth=5)[
+        ("TEST-1", "vuln-lib", "vuln_lib.risky")
+    ]
+    assert result.status == "POTENTIALLY_REACHABLE"
 
 
 def test_package_cache_reuse_two_symbols() -> None:
@@ -278,10 +340,10 @@ def test_package_cache_reuse_two_symbols() -> None:
     )
     results = analyze_reachability(graph, ["main"], [vuln], max_depth=5)
     assert (
-        results[("TEST-1", "requests.sessions.Session.request")].status
+        results[("TEST-1", "requests", "requests.sessions.Session.request")].status
         == "POTENTIALLY_REACHABLE"
     )
     assert (
-        results[("TEST-1", "requests.sessions.Session.close")].status
+        results[("TEST-1", "requests", "requests.sessions.Session.close")].status
         == "POTENTIALLY_REACHABLE"
     )

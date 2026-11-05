@@ -1,7 +1,15 @@
 """OSV vulnerability ingestion and mapping."""
 
-from pyreach.osv.importer import ImportStats, OSVImporter, sync_osv
-from pyreach.osv.mapper import AffectedSymbol, Vulnerability, VulnerabilityMapper
+from importlib import import_module
+
+
+def __getattr__(name: str) -> object:
+    if name in {"ImportStats", "OSVImporter", "sync_osv"}:
+        return getattr(import_module("pyreach.osv.importer"), name)
+    if name in {"AffectedSymbol", "Vulnerability", "VulnerabilityMapper"}:
+        return getattr(import_module("pyreach.osv.mapper"), name)
+    raise AttributeError(name)
+
 
 __all__ = [
     "AffectedSymbol",

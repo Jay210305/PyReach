@@ -27,6 +27,7 @@ EXPECTED_INDEXES = {
     "idx_advisories_modified",
     "idx_affected_symbols_advisory",
     "idx_affected_symbols_fqn",
+    "idx_affected_symbols_package",
     "idx_cg_nodes_fqn",
     "idx_cg_nodes_file",
     "idx_cg_edges_caller",
@@ -108,13 +109,13 @@ def test_indexes_exist(tmp_path: Path) -> None:
         assert EXPECTED_INDEXES.issubset(indexes)
 
 
-def test_schema_version_is_one(tmp_path: Path) -> None:
+def test_schema_version_is_two(tmp_path: Path) -> None:
     db_path = tmp_path / "test.db"
     initialize_database(db_path)
 
     with get_db_connection(db_path) as conn:
         version = get_schema_version(conn)
-        assert version == 1
+        assert version == 2
 
 
 def test_connection_rollback_on_error(tmp_path: Path) -> None:
@@ -140,7 +141,27 @@ def test_initialize_idempotent(tmp_path: Path) -> None:
     initialize_database(db_path)
 
     with get_db_connection(db_path) as conn:
-        assert get_schema_version(conn) == 1
+        assert get_schema_version(conn) == 2
+
+
+def test_initialize_migrates_existing_symbol_rows(tmp_path: Path) -> None:
+    import sqlite3
+
+    db_path = tmp_path / "old.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.executescript(
+            "CREATE TABLE affected_symbols (id INTEGER PRIMARY KEY, advisory_id INTEGER, "
+            "symbol_fqn TEXT, version_introduced TEXT, version_fixed TEXT, "
+            "version_fixed_inclusive INTEGER NOT NULL DEFAULT 0);"
+            "INSERT INTO affected_symbols (advisory_id, symbol_fqn) VALUES (1, 'pkg.risky');"
+            "CREATE TABLE schema_version (version INTEGER PRIMARY KEY);"
+            "INSERT INTO schema_version VALUES (1);"
+        )
+    initialize_database(db_path)
+    with get_db_connection(db_path) as conn:
+        assert get_schema_version(conn) == 2
+        row = conn.execute("SELECT symbol_fqn, package_name FROM affected_symbols").fetchone()
+        assert (row["symbol_fqn"], row["package_name"]) == ("pkg.risky", None)
 
 
 def test_parent_directory_created(tmp_path: Path) -> None:

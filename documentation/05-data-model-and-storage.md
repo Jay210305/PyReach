@@ -78,11 +78,13 @@ CREATE TABLE IF NOT EXISTS affected_symbols (
     version_introduced TEXT,
     version_fixed TEXT,
     version_fixed_inclusive INTEGER NOT NULL DEFAULT 0,  -- 0=fixed, 1=last_affected
+    package_name TEXT,  -- normalized PyPI package for this affected range
     FOREIGN KEY (advisory_id) REFERENCES advisories(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_affected_symbols_advisory ON affected_symbols(advisory_id);
 CREATE INDEX IF NOT EXISTS idx_affected_symbols_fqn ON affected_symbols(symbol_fqn);
+CREATE INDEX IF NOT EXISTS idx_affected_symbols_package ON affected_symbols(package_name);
 
 -- ============================================================
 -- Call Graph Nodes
@@ -218,6 +220,11 @@ class AdvisoryRepository:
 > doc 03 §2. `AdvisoryRepository` owns persistence only (`upsert`,
 > `replace_symbols`).
 
+An OSV ID can affect several PyPI packages. The advisory row keeps the first
+package for legacy compatibility, while each affected-symbol row records its
+own normalized `package_name` and version range. The mapper queries that
+column when present. Older rows with `NULL` retain the advisory package.
+
 ## OSV Ingestion Algorithm
 
 ### Incremental Sync Flow
@@ -300,13 +307,14 @@ Before building the call graph:
 ## Backup and Migration
 
 - **Backup**: The OSV DB is a single file; copy via standard filesystem tools. Lidercom runner should backup weekly.
-- **Migrations**: Use simple integer versioning in a `schema_version` table. Apply sequential SQL scripts from `pyreach/db/migrations/`.
+- **Migrations**: `initialize_database` adds `affected_symbols.package_name`
+  and its index to existing databases, then records schema version 2.
 
 ```sql
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER PRIMARY KEY
 );
-INSERT INTO schema_version (version) VALUES (1);
+INSERT INTO schema_version (version) VALUES (2);
 ```
 
 ---

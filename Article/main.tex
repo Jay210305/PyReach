@@ -1,0 +1,230 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Paquetes de Idioma y Codificación ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{csquotes}
+
+% --- Paquetes de Estética y Formato ---
+\usepackage[margin=2.54cm]{geometry}
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\graphicspath{{./}{figuras/}{figuras/figuras1/}{figuras/figuras3/}{figuras/figuras4/}{figuras/figuras5/}{figuras/figuras6/}}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc, trees}
+\usepackage{caption}
+\usepackage{multirow}
+\usepackage{pdflscape}
+\usepackage[table]{xcolor}
+\usepackage{fontawesome5}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{indentfirst}
+\usepackage{amsmath} % NECESARIO para los comandos \text en las hipótesis
+\usepackage{tabularx}
+% Dependencias del capítulo 2 (sin alterar el formato del capítulo 1).
+\usepackage{listings}
+\usepackage{needspace}
+\usepackage{ragged2e}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\newcolumntype{P}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumitem}
+
+% --- Configuración de Párrafo ---
+\onehalfspacing 
+\setlength{\parindent}{1.27cm}
+\setlength{\parskip}{0pt}
+
+% --- Títulos Estilo APA 7 ---
+\titleformat{\section}{\normalfont\large\bfseries\centering}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\bfseries\itshape}{\thesubsubsection}{1em}{}
+
+% --- Configuración de Bibliografía ---
+\usepackage[backend=biber, style=apa]{biblatex}
+\addbibresource{referencias.bib}
+\addbibresource{practicas/practica7_fuentes.bib}
+\addbibresource{practicas/practica8_fuentes.bib}
+
+% --- Enlaces ---
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    allcolors=black, 
+    citecolor=black
+}
+
+% --- Numeración de Páginas ---
+\usepackage{fancyhdr}
+\setlength{\headheight}{14.5pt}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[R]{\thepage}
+
+% --- Comando personalizado para Páginas Divisoras de Capítulos (CORREGIDO) ---
+\newcommand{\capitulopage}[1]{%
+    \newpage
+    \thispagestyle{empty} % Quita la numeración de página en esta hoja
+    \vspace*{\fill}
+    \begin{center}
+        {\normalfont\Large\bfseries #1 \par}
+    \end{center} % <--- Aquí estaba el error, ahora cierra correctamente
+    \vspace*{\fill}
+    \newpage
+}
+
+% --- Configuración de formato para la numeración de títulos ---
+\renewcommand{\thesection}{\Roman{section}} % Secciones en Romanos (I, II, III)
+\renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}} % Subsecciones en Arábigos (1.1, 1.2)
+\renewcommand{\thesubsubsection}{\arabic{section}.\arabic{subsection}.\arabic{subsubsection}} % Sub-subsecciones (1.1.1)
+
+\begin{document}
+
+% --- CUBIERTA / DATOS INFORMATIVOS ---
+\begin{titlepage}
+    \centering
+    \setstretch{1.5}
+
+    \includegraphics[width=0.3\textwidth]{lognuevo_ucsm.png}
+
+    % --- ENCABEZADO ---
+    \vspace{0.5cm}
+    {\large\bfseries FACULTAD DE CIENCIAS E INGENIERÍAS FÍSICAS Y FORMALES \par}
+    {\large\bfseries ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS \par}
+    \vspace{0.4cm}
+    
+    {\large Análisis estático de alcanzabilidad mediante grafos de llamadas para la reducción de alertas de vulnerabilidad en dependencias transitivas de Python - Lidercom Perú S.A.C.\par}
+        
+    \vspace{0.5cm}
+    
+    % --- PRESENTADO POR ---
+    {\large\bfseries Presentado por: \par}
+    {\large Centeno León, Julio Enrique \par}
+    {\large Yáñez Mejía, José Alonso \par}    
+    \vspace{0.5cm}
+    
+    % --- ASESOR ---
+    {\large\bfseries Asesor: \par}
+    {\large Dr. Néstor Torres Gamarra \par}
+    
+    \vfill
+
+    % --- LUGAR Y FECHA ---
+    {\large Arequipa -- Perú \par}
+    {\large 2026 \par}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\include{capitulos/capitulo1}
+\include{capitulos/capitulo2}
+
+
+\newpage
+\section{REFERENCIAS}
+\printbibliography[heading=none]
+
+% =========================================================================
+% APÉNDICE A. GLOSARIO DE TÉRMINOS DEL DOMINIO
+% =========================================================================
+\newpage
+\appendix
+\section*{Apéndice A}
+\addcontentsline{toc}{section}{Apéndice A}
+
+\begin{center}
+    {\normalfont\Large\bfseries Apéndice A. Glosario de Términos del Dominio \par}
+\end{center}
+\vspace{0.3cm}
+
+\noindent
+En cumplimiento de las Unidades 3 y 4 del libro de cátedra y las normas de presentación APA 7.ª edición \parencite{apa2020publication, torres2026proyecto}, a continuación se definen los términos propios del dominio de la ciberseguridad, análisis estático y cadena de suministro de software aplicados en el proyecto \textit{PyReach}, divididos en dos secciones continuas para optimizar su legibilidad.
+
+% --- PARTE 1 ---
+\begin{table}[H]
+\centering
+\caption{Glosario de términos del dominio (Parte 1)}
+\label{tab:glosario_terminos_u3_u4}
+\small
+\setstretch{1.05}
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{4.4cm} X}
+\toprule
+\textbf{Término} & \textbf{Definición} \\
+\midrule
+Alerta No Explotable & 
+Notificación de seguridad emitida por un escáner SCA tradicional sobre una vulnerabilidad presente en una librería que no puede ser activada por un atacante, debido a que el código vulnerable no es alcanzable desde la aplicación huésped \parencite{pashchenko2022vuln4real}. \\
+\addlinespace
+Análisis de Alcanzabilidad (\textit{Reachability Analysis}) & 
+Técnica de análisis formal de programas que determina estáticamente si existe una ruta de flujo de control o camino dirigido válido que conecte los puntos de entrada (\textit{entrypoints}) de la aplicación con una función vulnerable específica \parencite{dann2021identifying, ponta2020detection}. \\
+\addlinespace
+Árbol de Sintaxis Abstracta (AST) & 
+Representación jerárquica en forma de árbol de la estructura sintáctica y gramatical del código fuente interpretado, generada por el analizador sintáctico del lenguaje sin incluir delimitadores ni espacios en blanco \parencite{salis2021pycg}. \\
+\addlinespace
+Compuerta de Calidad (\textit{Quality Gate}) & 
+Punto de control automatizado en un pipeline de integración continua que evalúa métricas o resultados de pruebas estáticas y detiene el pase a producción mediante códigos de salida (\textit{exit codes}) si no se cumplen los criterios mínimos definidos \parencite{humble2010continuous}. \\
+\addlinespace
+Dependencia Transitiva & 
+Paquete o módulo de software requerido de forma indirecta por una aplicación, al ser una dependencia secundaria declarada e importada por otra librería de primer orden (\textit{dependencia directa}) \parencite{decan2019empirical, alfadel2023empirical}. \\
+\addlinespace
+Ejecución \textit{On-Premise} & 
+Modelo de procesamiento y despliegue donde el software y los análisis se ejecutan estrictamente en servidores locales o infraestructura interna de la organización, garantizando que cero bytes de datos abandonen la red corporativa \parencite{ladisa2023sok, gutierrez2024auditoria}. \\
+\bottomrule
+\end{tabularx}
+\vspace{2pt}
+\begin{flushleft}
+\scriptsize \textit{Nota.} Términos del dominio estructurados según la Tabla 26 del modelo institucional y las Unidades 3 y 4 del libro de cátedra \parencite{torres2026proyecto}. Elaboración propia.
+\end{flushleft}
+\end{table}
+
+\newpage
+
+% --- PARTE 2 ---
+\begin{table}[H]
+\centering
+\ContinuedFloat
+\caption{Glosario de términos del dominio (Continuación)}
+\small
+\setstretch{1.05}
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{4.4cm} X}
+\toprule
+\textbf{Término} & \textbf{Definición} \\
+\midrule
+Fatiga de Alertas (\textit{Alert Fatigue}) & 
+Fenómeno psicológico y operativo que experimentan los ingenieros de software ante un volumen masivo y continuo de alertas irrelevantes o falsos positivos, provocando que desatiendan o ignoren incidentes de seguridad críticos reales \parencite{johnson2013developers, sadowski2018lessons}. \\
+\addlinespace
+Grafo de Llamadas (\textit{Call Graph}) & 
+Grafo dirigido cuyos nodos representan funciones, métodos o procedimientos, y cuyas aristas dirigidas modelan las relaciones de invocación y transferencia de control de ejecución entre ellos \parencite{ryder1979constructing, salis2021pycg}. \\
+\addlinespace
+OpenSSF OSV & 
+Estándar abierto y base de datos distribuida (\textit{Open Source Vulnerabilities}) impulsada por la Open Source Security Foundation, que documenta avisos de seguridad estructurados en JSON con rangos de versiones y símbolos afectados \parencite{openssf2023osv}. \\
+\addlinespace
+Punto de Entrada (\textit{Entrypoint}) & 
+Función, script principal o manejador de ruta (ej. endpoints de FastAPI o vistas de Django) donde se inicia la ejecución del código de la aplicación tras recibir una petición externa o invocación del usuario \parencite{salis2021pycg}. \\
+\addlinespace
+SARIF (\textit{Static Analysis Results Interchange Format}) & 
+Estándar internacional de OASIS basado en JSON para la representación estructurada e interoperable de los diagnósticos y trazas emitidos por herramientas de análisis estático en pipelines de CI/CD \parencite{oasis2019sarif}. \\
+\addlinespace
+Triaje Manual & 
+Proceso de revisión humana en el que un desarrollador o especialista en ciberseguridad inspecciona, verifica y clasifica individualmente una alerta de vulnerabilidad para dictaminar si representa un riesgo real o un falso positivo \parencite{pashchenko2022vuln4real, sadowski2018lessons}. \\
+\bottomrule
+\end{tabularx}
+\vspace{2pt}
+\begin{flushleft}
+\scriptsize \textit{Nota.} Continuación de la Tabla 26 conforme a los lineamientos metodológicos de cátedra \parencite{torres2026proyecto}. Elaboración propia.
+\end{flushleft}
+
+\end{table}
+
+\end{document}

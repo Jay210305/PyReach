@@ -34,6 +34,7 @@ coverage.json
 
 # PyReach runtime data
 .pyreach/
+scan-targets/Lidercom_Recoleccion/
 *.sarif
 *.db
 *.sqlite

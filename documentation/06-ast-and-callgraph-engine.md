@@ -315,6 +315,7 @@ Python allows recursive calls. The BFS `visited` set prevents infinite loops. Fo
 |-----------|---------------|
 | Static path exists from entry point to vulnerable symbol (length <= k) | **REACHABLE** |
 | No static path exists; no dynamic edges in subgraph | **NOT_REACHABLE** |
+| Search reaches the configured depth limit with further edges unexplored | **POTENTIALLY_REACHABLE** |
 | No static path exists; dynamic edge present in any path to symbol | **POTENTIALLY_REACHABLE** |
 | Symbol is in a package not imported by application | **NOT_REACHABLE** |
 | Symbol is in an imported package but call chain unresolved | **POTENTIALLY_REACHABLE** |

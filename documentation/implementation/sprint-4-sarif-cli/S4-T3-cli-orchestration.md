@@ -134,7 +134,7 @@ uv run pytest tests/e2e -q
 
 ## Definition of Done
 
-- [ ] CLI merged and installable.
-- [ ] `--help` documents every option.
-- [ ] E2E tests green.
-- [ ] Pipeline steps unit-tested.
+- [x] CLI merged and installable (`pyreach/cli.py`, `[project.scripts]` entry).
+- [x] `--help` documents every option (verified `uv run python -m pyreach.cli --help`).
+- [x] E2E tests green (`tests/e2e/test_cli_invocations.py`, 8 passed).
+- [x] Pipeline steps unit-tested (`tests/unit/test_cli.py`, 29 passed).

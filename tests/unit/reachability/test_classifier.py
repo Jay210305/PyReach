@@ -109,11 +109,10 @@ def test_never_false_negative_matrix() -> None:
             max_depth_exceeded=depth,
         )
         result = classifier.classify(_evidence(), ctx)
-        # NOT_REACHABLE only when the analysis is fully certain (R2). An
-        # unimported package is NOT_REACHABLE regardless of dynamic edges
-        # elsewhere (matrix row 4).
-        certain = (not package_imported and not unresolved) or (
-            package_imported and exact and not dynamic and not unresolved
+        # A bounded traversal cannot prove absence beyond its depth limit.
+        certain = not depth and (
+            (not package_imported and not unresolved)
+            or (package_imported and exact and not dynamic and not unresolved)
         )
         expected = "NOT_REACHABLE" if certain else "POTENTIALLY_REACHABLE"
         assert result.status == expected, (package_imported, exact, dynamic, unresolved, depth)

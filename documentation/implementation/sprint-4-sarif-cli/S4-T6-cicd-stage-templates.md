@@ -27,12 +27,12 @@ Create `ci/gitlab/.pyreach-scan.yml` (an includable template) implementing
 `09-cicd-integration.md` §2.1:
 
 - Stage `security`.
-- `before_script`:
-  - Run `pyreach sync-osv` only if the DB is missing.
-  - `pip install pyreach==$PYREACH_VERSION`.
+- `before_script`: require the pre-seeded DB; fail if it is missing.
+- Use a prebuilt PyReach runner image with its entrypoint cleared for GitLab.
 - `script`: run `pyreach` with `--manifest`, `--db-path`, `--output`, `--format sarif`,
   `--include-potentially`, `--verbose`.
-- `artifacts.reports.dependency_scanning` pointing at the SARIF file; `when: always`.
+- `artifacts.reports.sarif` pointing at the SARIF file; `when: always`.
+- A separate `security_gate` job consumes the scan exit code after report ingestion.
 - `allow_failure: false`; tags `lidercom-local-runner`, `security`.
 - Document the emergency override using `--no-fail` via a manual variable
   (`pyreach_scan_override`), per `09-...md` §2.3.
@@ -42,7 +42,7 @@ Create `ci/gitlab/.pyreach-scan.yml` (an includable template) implementing
 Create `ci/jenkins/Jenkinsfile.pyreach` with a declarative `Security Scan` stage:
 
 - `agent { label 'lidercom-local-runner' }`.
-- Sync DB if absent, then run `pyreach`.
+- Require the pre-seeded DB, then run `pyreach`.
 - `post { always { archiveArtifacts ...; recordIssues tool: sarif(...) } }` via the Warnings
   Next Generation plugin.
 
@@ -58,8 +58,8 @@ Create `ci/scripts/sync-pyreach-osv.sh` from `09-...md` §3.1:
 
 Create `ci/docker/Dockerfile.pyreach`:
 
-- From `python:3.10-slim`; install the wheel; copy a pre-seeded `osv.db`; `ENTRYPOINT ["pyreach"]`.
-- Document the volume mount override for the DB.
+- From `python:3.10-slim`; install the wheel; `ENTRYPOINT ["pyreach"]`.
+- Require a read-only volume mount for the DB.
 
 ### 6.5 Wire an example into the repo and validate locally (0.5 h)
 
@@ -80,7 +80,7 @@ Create `ci/docker/Dockerfile.pyreach`:
 ## Acceptance Criteria
 
 - Example `.gitlab-ci.yml` snippet runs pyreach and gates on exit code. ✅ (roadmap S4-T6)
-- SARIF artifact is referenced under `reports.dependency_scanning`.
+- SARIF artifact is referenced under `reports.sarif`.
 - Cron and Docker templates are complete and documented.
 
 ## Verification
@@ -91,10 +91,9 @@ Create `ci/docker/Dockerfile.pyreach`:
 
 ## Edge Cases & Pitfalls
 
-- GitLab `coverage`/SARIF ingestion requires GitLab Ultimate for the Security dashboard;
-  document the fallback of artifact download for lower tiers.
-- The `dependency_scanning` report key expects a **dependency scanning** SARIF shape; if GitLab
-  rejects it, fall back to a generic `artifacts.paths` upload and document the limitation.
+- GitLab SARIF ingestion requires a successful scan job. The gate runs after it.
+- Fixed PyReach rule IDs do not produce native dependency-scanning classification;
+  document SARIF and artifact download as the supported report path.
 - Shell scripts must be POSIX (`sh`, not `bash`) where the image lacks bash.
 - Quote `$PYREACH_DB_PATH` to survive spaces and unset values.
 
@@ -106,7 +105,15 @@ Create `ci/docker/Dockerfile.pyreach`:
 
 ## Definition of Done
 
-- [ ] GitLab + Jenkins + cron + Docker templates merged.
-- [ ] `ci/README.md` explains variable setup and override procedure.
-- [ ] YAML validated; example include present.
-- [ ] Gate behavior demonstrated on a synthetic project.
+- [x] GitLab + Jenkins + cron + Docker templates merged (`ci/gitlab/`, `ci/jenkins/`, `ci/scripts/`, `ci/docker/`).
+- [x] `ci/README.md` explains variable setup and override procedure.
+- [x] YAML validated; example include present (`ci/examples/.gitlab-ci.yml`, `tests/unit/test_ci_templates.py` — 8 passed).
+- [x] Gate behavior demonstrated on a synthetic project (exit 1 + `error` SARIF on `linear_reachable`, exit 0 on `package_unused`).
+
+Notes (2026-10-14):
+- `pyreach sync-osv` is wired for a separate runner maintenance job. Scan jobs
+  require the pre-seeded DB and never fetch during analysis.
+- GitLab uses `artifacts.reports.sarif` in the scan job and a separate gate
+  job to preserve report ingestion when findings block deployment.
+- `sh -n` syntax test skips where POSIX `sh` is absent (Windows dev); runs on Linux CI.
+- No local Docker image dry-run was available; Dockerfile is statically asserted.

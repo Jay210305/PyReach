@@ -1,4 +1,5 @@
 """Demo for S3-T1 — DiGraph fundamentals, serialization, bounded BFS on cycle."""
+
 import json
 import time
 from collections import deque
@@ -52,14 +53,17 @@ def main() -> None:
     for i in range(10000):
         big.add_node(f"n{i}")
     for i in range(9999):
-        big.add_edge(f"n{i}", f"n{i+1}", edge_type="STATIC", confidence=1.0)
+        big.add_edge(f"n{i}", f"n{i + 1}", edge_type="STATIC", confidence=1.0)
     elapsed = time.perf_counter() - start
-    print(f"10k chain build: {elapsed:.3f}s nodes={big.number_of_nodes()} edges={big.number_of_edges()}")
+    print(
+        f"10k chain build: {elapsed:.3f}s "
+        f"nodes={big.number_of_nodes()} edges={big.number_of_edges()}"
+    )
     assert big.has_node("n0") and big.has_node("n9999")
     print(f"DiGraph collapses parallel: {big['n0']['n1']['edge_type']}")
     # JSON size hint
     raw = json.dumps(nx.node_link_data(big, edges="edges"))
-    print(f"serialized size ~{len(raw)//1024} KB")
+    print(f"serialized size ~{len(raw) // 1024} KB")
 
 
 if __name__ == "__main__":

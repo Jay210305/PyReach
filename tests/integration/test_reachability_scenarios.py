@@ -26,7 +26,7 @@ SCENARIOS = [
     ("linear_reachable", "REACHABLE"),
     ("transitive_unreachable", "NOT_REACHABLE"),
     ("dynamic_import", "POTENTIALLY_REACHABLE"),
-    ("depth_limit", "NOT_REACHABLE"),
+    ("depth_limit", "POTENTIALLY_REACHABLE"),
     ("package_unused", "NOT_REACHABLE"),
 ]
 
@@ -69,7 +69,7 @@ def test_scenario(tmp_path: Path, scenario: str, expected: str) -> None:
         graph, entries, [advisory], max_depth=5, application_imports=imported_packages(modules)
     )
 
-    result = results[(advisory.osv_id, VULN_SYMBOL)]
+    result = results[(advisory.osv_id, advisory.package_name, VULN_SYMBOL)]
     assert result.status == expected, _diagnostics(sorted(graph.edges(data=True)), entries, result)
 
 
@@ -83,7 +83,7 @@ def test_linear_reachable_path_matches_chain(tmp_path: Path) -> None:
     advisory = stub_advisory()
     result = analyze_reachability(
         graph, entries, [advisory], max_depth=5, application_imports=imported_packages(modules)
-    )[(advisory.osv_id, VULN_SYMBOL)]
+    )[(advisory.osv_id, advisory.package_name, VULN_SYMBOL)]
 
     assert result.status == "REACHABLE"
     assert REACHABLE_PATH in result.paths
@@ -91,7 +91,7 @@ def test_linear_reachable_path_matches_chain(tmp_path: Path) -> None:
 
 
 def test_not_reachable_scenarios_have_no_path(tmp_path: Path) -> None:
-    for scenario in ("transitive_unreachable", "depth_limit", "package_unused"):
+    for scenario in ("transitive_unreachable", "package_unused"):
         clear_cache()
         project = _copy_project(scenario, tmp_path)
         modules, index = _run_ast_pipeline(project)
@@ -104,7 +104,7 @@ def test_not_reachable_scenarios_have_no_path(tmp_path: Path) -> None:
             [advisory],
             max_depth=5,
             application_imports=imported_packages(modules),
-        )[(advisory.osv_id, VULN_SYMBOL)]
+        )[(advisory.osv_id, advisory.package_name, VULN_SYMBOL)]
         assert result.status == "NOT_REACHABLE", scenario
         assert result.paths == [], scenario
 
@@ -124,5 +124,5 @@ def test_linear_reachable_performance(tmp_path: Path) -> None:
     )
     elapsed = time.perf_counter() - start
 
-    assert results[(advisory.osv_id, VULN_SYMBOL)].status == "REACHABLE"
+    assert results[(advisory.osv_id, advisory.package_name, VULN_SYMBOL)].status == "REACHABLE"
     assert elapsed < 2.0, f"graph build + analysis took {elapsed:.3f}s"

@@ -72,17 +72,18 @@ class AdvisoryRepository:
         insert_sql = """
             INSERT INTO affected_symbols (
                 advisory_id, symbol_fqn, version_introduced, version_fixed,
-                version_fixed_inclusive
+                version_fixed_inclusive, package_name
             )
-            VALUES (?, ?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?, ?);
         """
-        seen: set[tuple[str, str | None, str | None, bool]] = set()
+        seen: set[tuple[str, str | None, str | None, bool, str | None]] = set()
         for symbol in symbols:
             key = (
                 symbol.symbol_fqn,
                 symbol.version_introduced,
                 symbol.version_fixed,
                 symbol.version_fixed_inclusive,
+                symbol.package_name,
             )
             if key not in seen:
                 seen.add(key)
@@ -94,5 +95,6 @@ class AdvisoryRepository:
                         symbol.version_introduced,
                         symbol.version_fixed,
                         int(symbol.version_fixed_inclusive),
+                        symbol.package_name,
                     ),
                 )

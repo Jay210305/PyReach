@@ -14,62 +14,28 @@ PyReach must operate as a first-class citizen within Lidercom Peru S.A.C.'s exis
 
 ### 2.1 GitLab CI Integration (Primary Target)
 
-Lidercom uses GitLab with local runners. PyReach integrates as a dedicated stage.
+Lidercom uses GitLab with local runners. The deployable template lives in
+`ci/gitlab/.pyreach-scan.yml`; the consuming pipeline must use two stages so
+GitLab can ingest SARIF from a successful scan job before the gate job fails.
 
 ```yaml
 # .gitlab-ci.yml (to be included in target projects or as a template)
+
+include:
+  - local: ci/gitlab/.pyreach-scan.yml
 
 stages:
   - build
   - test
   - security
+  - security_gate
   - deploy
 
-variables:
-  PYREACH_VERSION: "0.1.0"
-  PYREACH_DB_PATH: "/opt/pyreach/osv.db"
-
-# ------------------------------------------------------------------
-# Build and test stages remain unchanged
-# ------------------------------------------------------------------
-
-# ------------------------------------------------------------------
-# Security Stage: PyReach Scan
-# ------------------------------------------------------------------
 pyreach_scan:
-  stage: security
-  image: python:3.10-slim
-  variables:
-    PYREACH_OUTPUT: "pyreach-results.sarif"
-  before_script:
-    # Ensure OSV DB is present on the runner (pre-seeded via cron)
-    - |
-      if [ ! -f "$PYREACH_DB_PATH" ]; then
-        echo "OSV database missing. Running sync..."
-        pyreach sync-osv --db-path "$PYREACH_DB_PATH"
-      fi
-    # Install PyReach
-    - pip install pyreach==$PYREACH_VERSION
-  script:
-    - pyreach
-        --manifest requirements.txt
-        --db-path "$PYREACH_DB_PATH"
-        --output "$PYREACH_OUTPUT"
-        --format sarif
-        --include-potentially
-        --verbose
-  artifacts:
-    when: always
-    paths:
-      - "$PYREACH_OUTPUT"
-    reports:
-      # GitLab Ultimate/Security Center SARIF ingestion
-      dependency_scanning:
-        - "$PYREACH_OUTPUT"
-  allow_failure: false
-  tags:
-    - lidercom-local-runner
-    - security
+  extends: .pyreach-scan
+
+pyreach_gate:
+  extends: .pyreach-gate
 ```
 
 ### 2.2 Jenkins Integration (Alternative)
@@ -200,7 +166,12 @@ pyreach_scan:
 
 ### 4.1 GitLab Security Dashboard
 
-GitLab Ultimate ingests SARIF `dependency_scanning` reports and displays:
+GitLab ingests the `artifacts.reports.sarif` report from a successful scan
+job. The separate gate job blocks a pipeline when PyReach exits 1. Findings
+with the fixed PyReach rule IDs are not classified as native dependency
+scanning vulnerabilities; use the SARIF report and gate for this release.
+
+SARIF viewers may display:
 - Vulnerability list with severity.
 - Code flow visualization (if viewer supports `codeFlows`).
 - Merge request diff annotations (if path matches changed files).

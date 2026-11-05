@@ -91,7 +91,16 @@ Target audience: a new contributor or a Lidercom engineer maintaining the runner
 
 ## Definition of Done
 
-- [ ] Both documents merged.
-- [ ] All commands verified.
-- [ ] Approval recorded from Dr. Torres and Lidercom users.
-- [ ] Consistent with shipped module names and options.
+- [x] Both documents merged (`documentation/user-manual.md`, `documentation/architecture-overview.md`).
+- [x] All commands verified (first-scan sequence, all formats/flags, wheel install; 2026-10-10).
+- [ ] Approval recorded from Dr. Torres and Lidercom users. (Pending: no reviewer access in this environment.)
+- [x] Consistent with shipped module names and options (cross-checked against `pyreach/` tree and `--help`).
+
+Notes (2026-10-14):
+- Manual documents `sync-osv` with local or HTTPS sources, the offline scan
+  boundary, and the separate GitLab SARIF publication and gate jobs.
+- `--cache` remains a hint.
+- Windows notes included (PowerShell `$LASTEXITCODE`, separators, `sh`/`unshare` unavailable).
+- No confidential names; placeholders only. No screenshots (text output).
+- Exclude semantics documented as verified: excluded dirs lose file/line detail but
+  placeholder nodes keep verdicts conservative (no false negatives).

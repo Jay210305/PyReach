@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS affected_symbols (
     version_fixed TEXT,
     -- 0 = fixed (exclusive upper bound), 1 = last_affected (inclusive)
     version_fixed_inclusive INTEGER NOT NULL DEFAULT 0,
+    package_name TEXT,
     FOREIGN KEY (advisory_id) REFERENCES advisories(id) ON DELETE CASCADE
 );
 

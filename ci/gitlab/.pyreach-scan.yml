@@ -1,0 +1,87 @@
+# PyReach security-scan template for GitLab CI (S4-T6).
+#
+# Include it from a project pipeline and extend the hidden job:
+#
+#   include:
+#     - local: ci/gitlab/.pyreach-scan.yml
+#
+#   pyreach_scan:
+#     extends: .pyreach-scan
+#     variables:
+#       PYREACH_PROJECT_PATH: "."
+#
+# Requires a pre-seeded OSV database on the runner (see ci/scripts/).
+# The runner must mount the pre-seeded database at PYREACH_DB_PATH.
+
+variables:
+  PYREACH_VERSION: "0.1.0"
+  PYREACH_DB_PATH: "/opt/pyreach/osv.db"
+  PYREACH_MANIFEST: "requirements.txt"
+  PYREACH_PROJECT_PATH: "."
+  PYREACH_OUTPUT: "pyreach-results.sarif"
+  PYREACH_MAX_DEPTH: "5"
+  # Space-separated extra flags, e.g. "-e myapp.main --exclude tests/".
+  PYREACH_EXTRA_ARGS: ""
+  # Emergency override (manual pipeline variable): "true" adds --no-fail.
+  # The SARIF report is still generated for audit.
+  PYREACH_SCAN_OVERRIDE: "false"
+
+.pyreach-scan:
+  stage: security
+  image:
+    name: pyreach:0.1.0
+    entrypoint: [""]
+  before_script:
+    - |
+      if [ ! -f "$PYREACH_DB_PATH" ]; then
+        echo "OSV database missing at $PYREACH_DB_PATH; provision it before scanning."
+        exit 2
+      fi
+  script:
+    - |
+      EXTRA_ARGS="$PYREACH_EXTRA_ARGS"
+      if [ "$PYREACH_SCAN_OVERRIDE" = "true" ]; then
+        echo "WARNING: emergency override active, adding --no-fail (audit only)."
+        EXTRA_ARGS="$EXTRA_ARGS --no-fail"
+      fi
+      set +e
+      pyreach "$PYREACH_PROJECT_PATH" \
+        --manifest "$PYREACH_MANIFEST" \
+        --db-path "$PYREACH_DB_PATH" \
+        --output "$PYREACH_OUTPUT" \
+        --format sarif \
+        --max-depth "$PYREACH_MAX_DEPTH" \
+        --include-potentially \
+        $EXTRA_ARGS
+      scan_exit=$?
+      set -e
+      if [ "$scan_exit" -eq 2 ]; then
+        exit 2
+      fi
+      printf '%s\n' "$scan_exit" > pyreach-exit-code.txt
+  artifacts:
+    when: always
+    paths:
+      - "$PYREACH_OUTPUT"
+      - pyreach-exit-code.txt
+    reports:
+      sarif: "$PYREACH_OUTPUT"
+  allow_failure: false
+  tags:
+    - lidercom-local-runner
+    - security
+
+.pyreach-gate:
+  stage: security_gate
+  image:
+    name: pyreach:0.1.0
+    entrypoint: [""]
+  needs:
+    - job: pyreach_scan
+      artifacts: true
+  script:
+    - exit "$(cat pyreach-exit-code.txt)"
+  allow_failure: false
+  tags:
+    - lidercom-local-runner
+    - security

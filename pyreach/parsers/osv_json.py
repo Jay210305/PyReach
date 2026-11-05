@@ -65,9 +65,10 @@ def _cvss31_base_score(vector: str) -> float | None:
     if scope == "U":
         impact = Decimal("6.42") * iss
     else:
-        impact = Decimal("7.52") * (iss - Decimal("0.029")) - Decimal("3.25") * (
-            iss - Decimal("0.02")
-        ) ** 15
+        impact = (
+            Decimal("7.52") * (iss - Decimal("0.029"))
+            - Decimal("3.25") * (iss - Decimal("0.02")) ** 15
+        )
     exploitability = Decimal("8.22") * av * ac * pr * ui
 
     if impact <= 0:
@@ -221,9 +222,12 @@ def extract_affected(record: dict[str, Any]) -> list[AffectedSymbol]:
         if not isinstance(package, dict) or package.get("ecosystem") != "PyPI":
             continue
 
+        package_name = normalize_name(str(package.get("name", "")))
+        if not package_name:
+            continue
         for symbol in _extract_symbols(item):
             for introduced, upper, inclusive in _extract_ranges(item):
-                results.append(AffectedSymbol(symbol, introduced, upper, inclusive))
+                results.append(AffectedSymbol(symbol, introduced, upper, inclusive, package_name))
 
     return results
 

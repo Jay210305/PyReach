@@ -1,9 +1,22 @@
+import subprocess
+import sys
+
 from pyreach.osv.mapper import AffectedSymbol, Vulnerability, is_version_affected
 from pyreach.parsers.osv_json import (
     extract_affected,
     map_cvss_score_to_level,
     parse_osv_record,
 )
+
+
+def test_osv_parser_imports_in_fresh_process() -> None:
+    result = subprocess.run(
+        [sys.executable, "-c", "import pyreach.parsers.osv_json"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_parse_valid_osv_record() -> None:
@@ -61,9 +74,7 @@ def test_severity_mapping() -> None:
 def test_cvss_vector_score_parsed() -> None:
     record = {
         "id": "GHSA-VECTOR",
-        "severity": [
-            {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}
-        ],
+        "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}],
         "affected": [
             {
                 "package": {"name": "requests", "ecosystem": "PyPI"},
@@ -80,9 +91,7 @@ def test_cvss_vector_score_parsed() -> None:
 def test_cvss_vector_critical() -> None:
     record = {
         "id": "GHSA-CRITICAL",
-        "severity": [
-            {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
-        ],
+        "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}],
         "affected": [
             {
                 "package": {"name": "requests", "ecosystem": "PyPI"},

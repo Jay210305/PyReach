@@ -46,6 +46,7 @@ class AffectedSymbol:
     version_introduced: str | None
     version_fixed: str | None
     version_fixed_inclusive: bool = False
+    package_name: str | None = None
 
 
 def is_version_affected(
@@ -93,9 +94,7 @@ class VulnerabilityMapper:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def find_by_package_and_version(
-        self, package_name: str, version: str
-    ) -> list[Vulnerability]:
+    def find_by_package_and_version(self, package_name: str, version: str) -> list[Vulnerability]:
         """Return advisories affecting *package_name* at *version*.
 
         An advisory matches when any of its stored ``(introduced, fixed)``
@@ -104,7 +103,11 @@ class VulnerabilityMapper:
         """
         norm_pkg = normalize_name(package_name)
         rows = self._conn.execute(
-            "SELECT * FROM advisories WHERE package_name = ?;", (norm_pkg,)
+            "SELECT DISTINCT a.* FROM advisories AS a "
+            "LEFT JOIN affected_symbols AS s ON s.advisory_id = a.id "
+            "WHERE s.package_name = ? OR "
+            "(s.package_name IS NULL AND a.package_name = ?);",
+            (norm_pkg, norm_pkg),
         ).fetchall()
 
         matching: list[Vulnerability] = []
@@ -112,8 +115,10 @@ class VulnerabilityMapper:
             advisory_id = row["id"]
             sym_rows = self._conn.execute(
                 "SELECT symbol_fqn, version_introduced, version_fixed, "
-                "version_fixed_inclusive FROM affected_symbols WHERE advisory_id = ?;",
-                (advisory_id,),
+                "version_fixed_inclusive FROM affected_symbols "
+                "WHERE advisory_id = ? AND (package_name = ? OR "
+                "(package_name IS NULL AND ? = ?));",
+                (advisory_id, norm_pkg, row["package_name"], norm_pkg),
             ).fetchall()
 
             is_affected = not sym_rows
@@ -123,8 +128,6 @@ class VulnerabilityMapper:
 
             for sym_row in sym_rows:
                 s_fqn = sym_row["symbol_fqn"]
-                if s_fqn not in symbols:
-                    symbols.append(s_fqn)
                 intro = sym_row["version_introduced"]
                 fixed = sym_row["version_fixed"]
                 inclusive = bool(sym_row["version_fixed_inclusive"])
@@ -134,6 +137,8 @@ class VulnerabilityMapper:
                     fixed_val = fixed
                 if is_version_affected(version, intro, fixed, inclusive):
                     is_affected = True
+                    if s_fqn not in symbols:
+                        symbols.append(s_fqn)
 
             if is_affected:
                 matching.append(

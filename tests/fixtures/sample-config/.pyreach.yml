@@ -1,0 +1,14 @@
+pyreach:
+  version: "1"
+  entry_points:
+    - "myapp.cli:main"
+    - "myapp.api.init_routes"
+  ignore_paths:
+    - "tests/"
+    - "docs/"
+  max_depth: 3
+  manifest: "requirements.txt"
+  osv_db: "~/.pyreach/osv.db"
+  thresholds:
+    fail_on_reachable: true
+    fail_on_potentially: false

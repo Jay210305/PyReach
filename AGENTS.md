@@ -370,7 +370,8 @@ Task IDs: `S1-T0 … S4-T8`. `S1-T0` (uv bootstrap) is a hard prerequisite for a
 - Local test gate: `.gitlab-ci.yml` runs `uv sync --locked` + `uv run pytest` on every push;
   failing tests block merges.
 - Security stage (Sprint 4): runs `pyreach` with `--format sarif --include-potentially`,
-  publishes `artifacts.reports.dependency_scanning`, and gates on the exit code.
+  publishes `artifacts.reports.sarif`, then gates on the recorded exit code in
+  a separate job so GitLab can ingest the scan report.
 - OSV DB is pre-seeded at `/opt/pyreach/osv.db` and refreshed weekly by cron
   (`pyreach sync-osv --incremental`).
 - Runner: Lidercom on-prem, no cloud egress; Docker replica is the contingency target.
@@ -417,8 +418,16 @@ Task IDs: `S1-T0 … S4-T8`. `S1-T0` (uv bootstrap) is a hard prerequisite for a
 - [x] `pyproject.toml`, `uv.lock`, `.gitignore`, `AGENTS.md` created.
 - [x] Sprint 1 completado (S1-T0..T7): parsers `Dependency`/`RequirementsTxtParser`/`PipfileLockParser`, `osv_json`/`importer`, `db` schema+connection, fixtures TDD, CI gate — `04:34` M1 cerrado.
 - [x] Sprint 2 completado (S2-T1..T7): `pyreach/ast` (`builder`/`symbols`/`resolver`), `loaders/source`+`packages`, study notes `documentation/study/ast-notes.md`, corpus `tests/fixtures/code_samples/` — M2 cerrado (2026-09-29).
-- [ ] Sprint 3 pendiente (S3-T1..T8): `callgraph` + `reachability` — siguiente en ruta crítica.
-- [ ] Sprint 4 pendiente (S4-T1..T8): SARIF/CLI/CI.
+- [x] Sprint 3 completado (S3-T1..T8): `pyreach/callgraph` (`nodes`/`edges`/`engine`) + `pyreach/reachability` (`analyzer`/`classifier`/`entrypoints`/`contracts`), integración S3-T8 en `tests/integration/test_reachability_scenarios.py` — M3 cerrado.
+- [x] S4-T1 completado: `pyreach/output/sarif.py` (dataclasses + `RULE_CATALOG` + fixture `tests/fixtures/sarif_schema/`), `tests/unit/output/test_sarif_model.py`, nota `documentation/study/sarif-design.md`.
+- [x] S4-T2 completado: `SarifBuilder` (codeFlows, orden determinista, `validate_sarif_document`), `tests/unit/output/test_sarif_serialization.py` — cobertura `output/` 95%.
+- [x] S4-T3 completado: `pyreach/cli.py` (argparse, `run_scan`, formatos sarif/json/text, `ExitCode`), `[project.scripts]`, `tests/unit/test_cli.py` + `tests/e2e/test_cli_invocations.py` — 419 passed, cobertura total 95%.
+- [x] S4-T5 completado: `pyreach/config.py` (`PyReachConfig`/`Thresholds`, `load_config`, `load_user_config`, `resolve_config` con precedencia CLI > proyecto > global > defaults), fixture `tests/fixtures/sample-config/.pyreach.yml`, `tests/unit/test_config.py` (29 passed, cobertura `config.py` 98%) + fix R2 en `analyzer._package_imported` (normalización PEP 503) — 450 passed, cobertura total 96%.
+- [x] S4-T6 completado: `ci/` (plantilla GitLab `.pyreach-scan`, `Jenkinsfile.pyreach`, `sync-pyreach-osv.sh` POSIX, `Dockerfile.pyreach`, ejemplo + `README`), `tests/unit/test_ci_templates.py` (gate exit 1 con SARIF `error` en `linear_reachable`, exit 0 en `package_unused`) — 458 passed, cobertura total 96%.
+- [x] S4-T7 completado (contingencia R4, sin acceso Lidercom): paquete wheel+sdist (`uv build`, flip `package=true` + hatchling + `README.md`), `documentation/validation/lidercom-results.md` (réplica micro 0.23 s / mid 1.61 s end-to-end, SARIF 4.8 KB, cero egress auditado), test `tests/integration/test_scan_benchmark.py` — 458 passed + 5 performance, cobertura total 96%.
+- [x] S4-T8 completado: `documentation/user-manual.md` (instalación, referencia, exit codes, config, formatos con muestras reales, CI, troubleshooting, soberanía) + `documentation/architecture-overview.md` (diagrama, pipeline 6 pasos, mapa de módulos, R2, performance, extensión); comandos verificados, wheel instalable. Aprobación Dr. Torres/Lidercom pendiente (sin acceso).
+- [x] S4-T4 completado: códigos de salida 0/1/2, errores de CLI y pruebas E2E; `pyreach sync-osv` admite fuentes locales o el archivo HTTPS de PyPI.
+- [x] Code review Sprint 4 remediado (2026-10-10): H1 manifest explícito no-soportado → `ConfigError`; H2 `SarifBuilder.write()` valida contra OASIS (schema embebido en paquete vía `importlib.resources`, sin red); M1 texto lista `POTENTIALLY_REACHABLE`; M2 sin `urlopen`/CWD; M3 riesgo residual documentado (`classifier.py` + arch-overview); M4 `fail_on_reachable:false` documentado+testeado; L1/L2/L4/L5/L6 + guard de path traversal en `_symbol_module_file`. 464 passed + 5 performance, cobertura 96%.
 
 When you finish a task, update its Definition of Done checklist and run the full gate:
 

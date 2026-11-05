@@ -1,0 +1,57 @@
+// PyReach security-scan stage for Jenkins declarative pipelines (S4-T6).
+// Requires the Warnings Next Generation plugin for SARIF ingestion
+// (recordIssues sarif). The DB is pre-seeded on the runner.
+
+pipeline {
+    agent { label 'lidercom-local-runner' }
+    environment {
+        PYREACH_VERSION = '0.1.0'
+        PYREACH_DB = '/opt/pyreach/osv.db'
+        PYREACH_OUT = 'pyreach-results.sarif'
+        PYREACH_MANIFEST = 'requirements.txt'
+        // Emergency override (manual build parameter): adds --no-fail,
+        // SARIF is still archived for audit.
+        PYREACH_SCAN_OVERRIDE = 'false'
+    }
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Build stage (project-specific).'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Test stage (project-specific).'
+            }
+        }
+        stage('Security Scan') {
+            steps {
+                sh '''
+                    if [ ! -f "$PYREACH_DB" ]; then
+                        echo "OSV database missing. Provision it before scanning."
+                        exit 2
+                    fi
+                    EXTRA_ARGS=""
+                    if [ "$PYREACH_SCAN_OVERRIDE" = "true" ]; then
+                        echo "WARNING: emergency override active, adding --no-fail (audit only)."
+                        EXTRA_ARGS="--no-fail"
+                    fi
+                    pyreach . \
+                        --manifest "$PYREACH_MANIFEST" \
+                        --db-path "$PYREACH_DB" \
+                        --output "$PYREACH_OUT" \
+                        --format sarif \
+                        --include-potentially \
+                        $EXTRA_ARGS
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "$PYREACH_OUT", allowEmptyArchive: true
+                    // SARIF publish via Warnings Next Generation plugin.
+                    recordIssues enabledForFailure: true, tool: sarif(pattern: "$PYREACH_OUT")
+                }
+            }
+        }
+    }
+}

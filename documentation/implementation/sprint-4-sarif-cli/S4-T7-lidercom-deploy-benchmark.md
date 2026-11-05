@@ -100,7 +100,18 @@ business acceptance test.
 
 ## Definition of Done
 
-- [ ] PyReach installed and working on the Lidercom runner (or documented replica).
-- [ ] <45s benchmark recorded with evidence.
-- [ ] SARIF accepted by the dashboard (or artifact fallback documented).
-- [ ] Validation report committed.
+- [x] PyReach installed and working on the Lidercom runner (or documented replica).
+  R4 fallback used: local replica (no VPN/credentials available). Wheel+sdist built
+  (`uv build`), console script verified (`uv run pyreach --version`).
+- [x] <45s benchmark recorded with evidence (micro 0.23 s cold, mid replica
+  1.18 s cold / 1.61 s end-to-end; budget guard `tests/integration/test_scan_benchmark.py`).
+- [x] SARIF accepted by the dashboard (or artifact fallback documented).
+  Schema-validated locally; dashboard ingestion untested → R3 artifact+gate fallback.
+- [x] Validation report committed (`documentation/validation/lidercom-results.md`).
+
+Notes (2026-10-09):
+- Packaging unblocked: `[tool.uv] package` flipped to `true` + `[build-system]`
+  (hatchling) + minimal `README.md`; sdist trimmed 6.2 MB → 387 KB via
+  `[tool.hatch.build]` excludes; `uv.lock` re-locked; `uv sync --locked` exit 0.
+- Zero network egress verified by static audit (only test-only schema fallback fetches).
+- Docker daemon down at validation time: image build deferred, Dockerfile statically asserted.

@@ -54,6 +54,14 @@ def initialize_database(db_path: str | Path) -> None:
     schema_sql = resources.files("pyreach.db").joinpath("schema.sql").read_text(encoding="utf-8")
     with get_db_connection(db_path) as conn:
         conn.executescript(schema_sql)
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(affected_symbols);")}
+        if "package_name" not in columns:
+            conn.execute("ALTER TABLE affected_symbols ADD COLUMN package_name TEXT;")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_affected_symbols_package "
+            "ON affected_symbols(package_name);"
+        )
+        conn.execute("INSERT OR IGNORE INTO schema_version (version) VALUES (2);")
         version = get_schema_version(conn)
-        if version < 1:
+        if version < 2:
             raise DatabaseError("Schema initialization failed to record schema_version.")

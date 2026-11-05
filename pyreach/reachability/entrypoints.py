@@ -198,9 +198,7 @@ def _detect_module(module: ModuleAST) -> set[str]:
             for call in ast.walk(stmt):
                 if isinstance(call, ast.Call):
                     target = (
-                        _runner_target(call)
-                        if _is_runner_call(call)
-                        else _callable_name(call.func)
+                        _runner_target(call) if _is_runner_call(call) else _callable_name(call.func)
                     )
                     if target is not None:
                         entries.add(_fqn(module.module_fqn, target))

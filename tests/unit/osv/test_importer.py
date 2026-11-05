@@ -1,4 +1,6 @@
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -33,6 +35,52 @@ def test_import_single_record(tmp_path: Path) -> None:
         assert row is not None
         assert row["cve_id"] == "CVE-2023-32681"
         assert row["severity_level"] == "HIGH"
+
+
+def test_one_osv_record_matches_each_affected_pypi_package(tmp_path: Path) -> None:
+    db_path = tmp_path / "osv.db"
+    source = tmp_path / "multi.jsonl"
+    source.write_text(
+        json.dumps(
+            {
+                "id": "GHSA-MULTI",
+                "affected": [
+                    {
+                        "package": {"ecosystem": "PyPI", "name": "first-lib"},
+                        "ranges": [
+                            {
+                                "type": "ECOSYSTEM",
+                                "events": [{"introduced": "1.0"}, {"fixed": "2.0"}],
+                            }
+                        ],
+                        "ecosystem_specific": {"symbols": ["first.safe"]},
+                    },
+                    {
+                        "package": {"ecosystem": "PyPI", "name": "second-lib"},
+                        "ranges": [
+                            {
+                                "type": "ECOSYSTEM",
+                                "events": [{"introduced": "3.0"}, {"fixed": "4.0"}],
+                            }
+                        ],
+                        "ecosystem_specific": {"symbols": ["second.risky"]},
+                    },
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    OSVImporter(db_path).import_file(source)
+
+    with get_db_connection(db_path) as conn:
+        mapper = VulnerabilityMapper(conn)
+        first = mapper.find_by_package_and_version("first-lib", "1.5")
+        second = mapper.find_by_package_and_version("second-lib", "3.5")
+        assert [v.affected_symbols for v in first] == [["first.safe"]]
+        assert [v.affected_symbols for v in second] == [["second.risky"]]
+        assert mapper.find_by_package_and_version("first-lib", "3.5") == []
+        assert mapper.find_by_package_and_version("second-lib", "1.5") == []
 
 
 def test_idempotent_reimport(tmp_path: Path) -> None:
@@ -152,11 +200,31 @@ def test_sync_osv_directory(tmp_path: Path) -> None:
         assert count == 2
 
 
-def test_sync_osv_rejects_url(tmp_path: Path) -> None:
+def test_sync_osv_downloads_archive_only_on_sync(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     db_path = tmp_path / "osv.db"
-    with pytest.raises(OSVError) as exc_info:
-        sync_osv(db_path, "https://osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip")
-    assert "Network download is not supported" in str(exc_info.value)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            "one.json",
+            json.dumps(
+                {
+                    "id": "GHSA-DOWNLOAD",
+                    "affected": [{"package": {"name": "flask", "ecosystem": "PyPI"}}],
+                }
+            ),
+        )
+    calls: list[str] = []
+
+    def fake_urlopen(url: str, timeout: int):
+        calls.append(url)
+        return io.BytesIO(buffer.getvalue())
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    stats = sync_osv(db_path, "https://example.test/PyPI/all.zip")
+    assert stats.imported == 1
+    assert calls == ["https://example.test/PyPI/all.zip"]
 
 
 def test_find_by_package_and_version(tmp_path: Path) -> None:

@@ -1,0 +1,25 @@
+# PyReach runner image (S4-T6, R4 containerized replica).
+#
+# Build from the repo root so the wheel is in context:
+#   uv build -o dist/
+#   docker build -f ci/docker/Dockerfile.pyreach -t pyreach:0.1.0 .
+#
+# The OSV database is NOT baked into the image (it is large/binary and
+# git-ignored, so a fresh clone could not build it). Provide it as a
+# read-only volume mount at run time:
+#   docker run --rm -v /opt/pyreach/osv.db:/opt/pyreach/osv.db:ro \
+#     -v "$PWD:/work:ro" pyreach:0.1.0 /work --db-path /opt/pyreach/osv.db
+#
+# No network egress is required at scan time (local DB only).
+FROM python:3.10-slim
+
+ARG PYREACH_WHEEL=dist/pyreach-0.1.0-py3-none-any.whl
+
+WORKDIR /opt/pyreach
+
+COPY ${PYREACH_WHEEL} /tmp/pyreach-0.1.0-py3-none-any.whl
+RUN pip install --no-cache-dir /tmp/pyreach-0.1.0-py3-none-any.whl \
+    && rm /tmp/pyreach-0.1.0-py3-none-any.whl
+
+ENTRYPOINT ["pyreach"]
+CMD ["--help"]

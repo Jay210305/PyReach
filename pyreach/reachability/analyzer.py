@@ -28,6 +28,7 @@ from pyreach.ast.builder import ModuleAST
 from pyreach.callgraph.engine import SENTINEL_DYNAMIC, SENTINEL_UNRESOLVED
 from pyreach.exceptions import ConfigError
 from pyreach.osv.mapper import Vulnerability
+from pyreach.parsers.manifest import normalize_name
 from pyreach.reachability.classifier import ReachabilityClassifier, SymbolContext
 from pyreach.reachability.contracts import (
     ReachabilityResult,
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 MAX_DEPTH = 7
 
 _traversal_cache: dict[tuple[str, str, int], TraversalOutcome] = {}
-_package_cache: dict[str, bool] = {}
+_package_cache: dict[tuple[str, str], bool] = {}
 
 
 def clear_cache() -> None:
@@ -148,17 +149,33 @@ def _traverse_uncached(
 
 
 def _package_imported(
-    graph: nx.DiGraph, package: str, application_imports: set[str] | None
+    graph: nx.DiGraph,
+    package: str,
+    symbol: str,
+    application_imports: set[str] | None,
+    package_import_names: dict[str, set[str]] | None,
 ) -> bool:
-    cached = _package_cache.get(package)
+    # PEP 503: "vuln-lib" (OSV/manifest) and "vuln_lib" (import/module) are the
+    # same distribution. Compare normalized, or packages with underscores
+    # silently read as not imported -> false NOT_REACHABLE (R2 violation).
+    norm_package = normalize_name(package)
+    symbol_top = symbol.split(".", 1)[0]
+    candidates = {norm_package}
+    if symbol_top != "*":
+        candidates.add(normalize_name(symbol_top))
+    if package_import_names is not None:
+        candidates.update(
+            normalize_name(name) for name in package_import_names.get(norm_package, set())
+        )
+    key = (norm_package, symbol_top)
+    cached = _package_cache.get(key)
     if cached is not None:
         return cached
     if application_imports is not None:
-        imported = package in application_imports
+        imported = any(normalize_name(name) in candidates for name in application_imports)
     else:
-        prefix = f"{package}."
-        imported = package in graph or any(n.startswith(prefix) for n in graph)
-    _package_cache[package] = imported
+        imported = any(normalize_name(node.split(".")[0]) in candidates for node in graph)
+    _package_cache[key] = imported
     return imported
 
 
@@ -199,11 +216,12 @@ def analyze_reachability(
     vulnerabilities: list[Vulnerability],
     max_depth: int = 5,
     application_imports: set[str] | None = None,
-) -> dict[tuple[str, str], ReachabilityResult]:
+    package_import_names: dict[str, set[str]] | None = None,
+) -> dict[tuple[str, str, str], ReachabilityResult]:
     """Classify reachability for every affected symbol of every vulnerability.
 
-    Results are keyed by ``(osv_id, symbol)`` so two advisories that share an
-    affected symbol never overwrite each other.
+    Results are keyed by ``(osv_id, package_name, symbol)`` so one advisory
+    affecting multiple packages cannot overwrite a wildcard finding.
     """
     if max_depth < 0 or max_depth > MAX_DEPTH:
         raise ConfigError(f"max_depth must be in [0, {MAX_DEPTH}], got {max_depth}")
@@ -211,11 +229,18 @@ def analyze_reachability(
     clear_cache()
 
     classifier = ReachabilityClassifier()
-    results: dict[tuple[str, str], ReachabilityResult] = {}
+    results: dict[tuple[str, str, str], ReachabilityResult] = {}
     for vuln in vulnerabilities:
         for symbol in vuln.affected_symbols:
-            results[(vuln.osv_id, symbol)] = _analyze_symbol(
-                graph, entry_points, vuln, symbol, max_depth, classifier, application_imports
+            results[(vuln.osv_id, vuln.package_name, symbol)] = _analyze_symbol(
+                graph,
+                entry_points,
+                vuln,
+                symbol,
+                max_depth,
+                classifier,
+                application_imports,
+                package_import_names,
             )
     return results
 
@@ -228,6 +253,7 @@ def _analyze_symbol(
     max_depth: int,
     classifier: ReachabilityClassifier,
     application_imports: set[str] | None,
+    package_import_names: dict[str, set[str]] | None,
 ) -> ReachabilityResult:
     exact_node_exists = symbol in graph
     if exact_node_exists:
@@ -238,7 +264,9 @@ def _analyze_symbol(
     context = SymbolContext(
         symbol_fqn=symbol,
         vulnerability=vuln,
-        package_imported=_package_imported(graph, vuln.package_name, application_imports),
+        package_imported=_package_imported(
+            graph, vuln.package_name, symbol, application_imports, package_import_names
+        ),
         exact_node_exists=exact_node_exists,
         dynamic_in_chain=evidence.encountered_dynamic,
         unresolved_imports=_unresolved_imports(graph),

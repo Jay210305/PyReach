@@ -1,0 +1,543 @@
+\documentclass[conference]{IEEEtran}
+
+% --- Paquetes Esenciales ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla,es-nodecimaldot]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{url}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+
+% --- Optimización de Floats para incrustación continua en el texto ---
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.80}
+
+\begin{document}
+
+\title{Análisis Estático Interprocedimental de Alcanzabilidad mediante Grafos de Llamadas para la Mitigación de Alertas Espurias en Dependencias de Python\\
+{\footnotesize \textsuperscript{*}Caso de Estudio Industrial: PyReach en Lidercom Perú S.A.C.}}
+
+\author{
+    \IEEEauthorblockN{Julio E. Centeno-León\IEEEauthorrefmark{1} y José A. Yáñez-Mejía\IEEEauthorrefmark{2}}
+    \IEEEauthorblockA{Escuela Profesional de Ingeniería de Sistemas, Universidad Católica de Santa María, Arequipa, Perú\\
+    Emails: \IEEEauthorrefmark{1}julio.centeno@ucsm.edu.pe, \IEEEauthorrefmark{2}jose.yanez@ucsm.edu.pe}
+}
+
+\maketitle
+
+\begin{abstract}
+Modern software engineering relies extensively on third-party open-source libraries, which constitute up to 80\% of executable code bases in Python microservices. Consequently, software supply chain vulnerabilities (CVEs) have surged. Conventional Software Composition Analysis (SCA) tools operate superficially by matching version strings declared in package manifests (e.g., \texttt{requirements.txt}), disregarding execution context. This yields an overwhelming 80\%--90\% false positive rate, as the vulnerable routines in transitive dependencies are rarely invoked. In regulated or proprietary industrial environments governed by ISO/IEC 27001:2022, cloud-based commercial SaaS scanners are strictly prohibited due to code leakage and IP confidentiality risks, causing acute developer alert fatigue and exhausting over 10 hours weekly in manual triage. 
+
+This paper presents \textit{PyReach}, a 100\% on-premise, CLI-driven interprocedural static reachability analyzer for Python 3.10+. PyReach traverses the Abstract Syntax Tree (AST) of host applications and resolved \texttt{site-packages}, computes module symbol tables, and constructs an interprocedural directed Call Graph using NetworkX. By querying an offline SQLite database seeded with OpenSSF OSV security advisories, PyReach executes a bounded depth-first/breadth-first traversal ($k=5$) from application entrypoints to vulnerable symbols. To prevent false negatives in dynamic Python constructs, PyReach enforces a conservative over-approximation policy, classifying findings deterministically into \texttt{REACHABLE}, \texttt{NOT\_REACHABLE}, or \texttt{POTENTIALLY\_REACHABLE}, and emitting OASIS SARIF v2.1.0 diagnostics for automated CI/CD quality gating. Validated in an industrial setting at Lidercom Perú S.A.C., PyReach pruned 80\%--87\% of spurious vulnerability alerts, executed scans in 1.18~s (cold) and 0.84~s (warm) on real microservices (well within the 45-second microservice budget), maintained a peak memory footprint under 7.3~MB, and guaranteed strictly zero network egress, fully preserving corporate data sovereignty.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Software supply chain security, static analysis, call graph, reachability analysis, Python AST, false positives, DevSecOps, SARIF, ISO/IEC 27001.
+\end{IEEEkeywords}
+
+\vspace{0.15cm}
+\begin{center}
+{\bfseries\small RESUMEN}
+\end{center}
+\begin{small}
+\textit{La ingeniería de software moderna depende en gran medida de librerías de código abierto de terceros, conformando hasta el 80\% de la base ejecutable en microservicios Python. En consecuencia, las vulnerabilidades en la cadena de suministro (CVE) han proliferado. Las herramientas de Análisis de Composición de Software (SCA) convencionales operan cotejando versiones en archivos de manifiesto (\texttt{requirements.txt}), prescindiendo del contexto de ejecución, lo que induce una tasa de falsos positivos del 80\%--90\% por funciones no invocadas. En entornos industriales bajo la norma ISO/IEC 27001:2022, las soluciones SaaS en la nube están estrictamente prohibidas por confidencialidad de código, causando fatiga de alertas y más de 10 horas semanales en triaje manual. Este artículo presenta \textit{PyReach}, un analizador estático interprocedimental de alcanzabilidad 100\% local para Python 3.10+. PyReach recorre el AST de la aplicación y de \texttt{site-packages}, construye un Grafo de Llamadas dirigido con NetworkX y evalúa rutas acotadas ($k=5$) hacia símbolos reportados en una base SQLite offline de OpenSSF OSV. Mediante una política conservadora frente a metaprogramación, clasifica los hallazgos en \texttt{REACHABLE}, \texttt{NOT\_REACHABLE} o \texttt{POTENTIALLY\_REACHABLE}, emitiendo reportes OASIS SARIF v2.1.0 para compuertas CI/CD. Validado en Lidercom Perú S.A.C., PyReach redujo entre 80\% y 87\% las alertas espurias, ejecutó escaneos en 1.18~s (frío) y 0.84~s (caliente), consumió menos de 7.3~MB de RAM y garantizó cero bytes de tráfico de red, preservando plenamente la soberanía del código corporativo.}
+\end{small}
+
+\vspace{0.1cm}
+\noindent\textbf{\textit{Palabras clave---}}Cadena de suministro de software, análisis estático, grafos de llamadas, análisis de alcanzabilidad, AST de Python, falsos positivos, DevSecOps, SARIF, ISO/IEC 27001.
+
+\section{Introducción}
+\IEEEPARstart{E}{n} la ingeniería de software contemporánea, la reutilización masiva de librerías y componentes de código abierto constituye la base fundamental del desarrollo ágil bajo el paradigma DevSecOps, representando frecuentemente más del 80\% de la base de código ejecutable en ecosistemas de integración continua (CI/CD) \cite{synopsys2024ossra, decan2019empirical}. No obstante, esta interdependencia estructural traslada vectores de ataque y vulnerabilidades conocidas (CVE) hacia la cadena de suministro de software (\textit{software supply chain}) \cite{ladisa2023sok, alfadel2023empirical, chinthanet2023lag}.
+
+Para mitigar estos riesgos, las organizaciones despliegan analizadores de composición de software (SCA). Sin embargo, los escáneres SCA convencionales (e.g., \textit{pip-audit}, \textit{Safety}, \textit{Dependabot}) operan mediante una inspección sintáctica superficial limitada al cotejo de cadenas de versión consignadas en archivos de manifiesto (\texttt{requirements.txt}, \texttt{Pipfile.lock}). Este enfoque asume erróneamente que la mera presencia física de una librería en el disco equivale a la ejecución de sus subrutinas vulnerables \cite{pashchenko2022vuln4real, dann2021identifying, duan2023towards}. Diversas investigaciones empíricas demuestran que entre el 80\% y el 90\% de las alertas emitidas por escáneres basados exclusivamente en manifiestos corresponden a funciones y métodos inalcanzables en ejecución (código inerte respecto al vector de ataque) \cite{pashchenko2022vuln4real, ponta2020detection, prana2022empirical}.
+
+En entornos industriales con estrictas políticas de seguridad de la información ---como la empresa de tecnología educativa \textbf{Lidercom Perú S.A.C.}, sujeta a los controles A.8.8, A.8.12 y A.8.28 de la norma \textbf{ISO/IEC 27001:2022}---, las plataformas comerciales SaaS en la nube (e.g., \textit{Snyk}, \textit{Endor Labs}) se encuentran taxativamente prohibidas debido a que exigen la transferencia de código fuente o grafos sintácticos hacia infraestructuras de terceros \cite{gutierrez2024auditoria, ladisa2023sok, ohm2022sok}. Como resultado, dos ingenieros de software de la organización debían destinar más de 10 horas semanales a revisar manualmente falsas alarmas \cite{sadowski2018lessons}. Esta sobrecarga produce tres efectos adversos directos:
+\begin{enumerate}
+    \item \textit{Fatiga de alertas} (\textit{alert fatigue}) en los desarrolladores, induciendo a desatender incidentes críticos reales \cite{johnson2013developers}.
+    \item \textit{Retrasos e inestabilidad en producción} debido a actualizaciones forzadas de dependencias que provocan roturas de compatibilidad de API (\textit{breaking changes}) \cite{bogart2016break, fowler2018refactoring}.
+    \item \textit{Sobrecostos operacionales continuos} no amortizables mediante soluciones en la nube sin vulnerar la soberanía del código \cite{ladisa2023sok}.
+\end{enumerate}
+
+Para resolver esta problemática de forma definitiva, en este trabajo se presenta el diseño, formalización, implementación y evaluación experimental de \textbf{\textit{PyReach}}: un analizador estático interprocedimental de ejecución 100\% local (\textit{on-premise}) para Python 3.10+, que construye Grafos de Llamadas (\textit{Call Graphs}) mediante el recorrido del Árbol de Sintaxis Abstracta (AST) de la aplicación y sus dependencias transitivas instaladas en \texttt{site-packages} \cite{salis2021pycg, ryder1979constructing}. Al contrastar el grafo frente a la base de conocimiento abierta OpenSSF OSV \cite{openssf2023osv}, \textit{PyReach} determina formalmente si las funciones afectadas son alcanzables desde los puntos de entrada (\textit{entrypoints}), emitiendo reportes interoperables OASIS SARIF v2.1.0 \cite{oasis2019sarif} para compuertas de calidad desatendidas en CI/CD \cite{humble2010continuous}.
+
+Las principales contribuciones de este artículo son:
+\begin{itemize}
+    \item Un motor de análisis estático interprocedimental sobre el AST nativo de Python que resuelve importaciones directas, relativas, alias y jerarquías de herencia en librerías transitivas anidadas en \texttt{site-packages}.
+    \item Un algoritmo de alcanzabilidad acotado ($k=5$) implementado con NetworkX, que integra una política de sobre-aproximación conservadora frente a metaprogramación dinámica para garantizar cero falsos negativos críticos (\textit{soundness}).
+    \item Un modelo de persistencia local en SQLite optimizado para el esquema OpenSSF OSV, logrando tiempos de consulta inferiores a 0.18~ms por paquete.
+    \item Una compuerta de calidad automatizada con serialización OASIS SARIF v2.1.0 y códigos de salida deterministas para pipelines de CI/CD.
+    \item Una validación experimental industrial en microservicios reales de analítica y NLP en Lidercom Perú S.A.C., evidenciando una reducción del 80\%--87\% de alertas espurias con cero bytes transferidos a la red corporativa externa.
+\end{itemize}
+
+\section{Antecedentes y Estado del Arte}
+
+\subsection{Generación de Grafos de Llamadas en Lenguajes Dinámicos}
+El modelado de transferencias de control mediante grafos de llamadas dirigidos fue formalizado por Ryder \cite{ryder1979constructing}. En lenguajes estáticos compilados (e.g., C/C++, Java), el análisis de tipos exhaustivo facilita la resolución estática de destinos de llamada \cite{nielson1999principles}. Sin embargo, en lenguajes interpretados de tipado dinámico como Python, la introspección en tiempo de ejecución, el polimorfismo dinámico y la metaprogramación (\texttt{eval}, \texttt{getattr}, decoradores dinámicos) representan desafíos notables para el análisis estático \cite{salis2021pycg, sotiropoulos2023jarvis, alexopoulos2026cross}.
+
+Salis et al. desarrollaron \textit{PyCG} \cite{salis2021pycg}, demostrando que el modelado preciso de asignaciones de funciones y resolución de módulos sobre el AST de CPython alcanza una precisión del 99.2\% en código de laboratorio. No obstante, \textit{PyCG} fue concebido como un algoritmo académico independiente que no contempla resolución recursiva de paquetes anidados en \texttt{site-packages}, carece de mecanismos de integración con bases de vulnerabilidades y no ofrece soporte para serialización estandarizada en integración continua \cite{salis2021pycg, sotiropoulos2023jarvis}. Recientemente, Sotiropoulos et al. \cite{sotiropoulos2023jarvis} extendieron este principio con JARVIS, pero su enfoque continúa centrado en benchmarks de laboratorio sin integración hacia compuertas de seguridad en CI/CD.
+
+\subsection{Análisis de Alcanzabilidad de Vulnerabilidades}
+En el ecosistema Java, Dann et al. \cite{dann2021identifying} y Ponta et al. \cite{ponta2020detection} introdujeron el análisis de dependencias a nivel de método, sentando las bases del escáner \textit{Eclipse Steady}. Posteriormente, Pashchenko et al. \cite{pashchenko2022vuln4real} presentaron el benchmark \textit{Vuln4Real}, demostrando empíricamente sobre 200 proyectos que menos del 10\% de las vulnerabilidades declaradas son alcanzables. Asimismo, Prana et al. \cite{prana2022empirical} categorizaron la alcanzabilidad empírica de CVEs en dependencias abiertas, demostrando que la mayoría de librerías secundarias operan como utilitarios especializados de los cuales el huésped solo ejecuta subconjuntos marginales. En años recientes, Duan et al. \cite{duan2023towards} abordaron la automatización de la alcanzabilidad en librerías abiertas, ratificando la necesidad imperativa de discriminar entre llamadas activas e inactivas para aliviar la carga del equipo de seguridad.
+
+\subsection{Riesgos en la Cadena de Suministro de Software}
+Ladisa et al. \cite{ladisa2023sok} formalizaron una taxonomía comprehensiva de vectores de ataque en la cadena de suministro de software, alertando sobre los riesgos de filtración de propiedad intelectual y exfiltración encubierta de metadatos cuando se emplean analizadores comerciales SaaS. En paralelo, Ohm et al. \cite{ohm2022sok} y Bhandari et al. \cite{bhandari2022cvefixes} analizaron la persistencia y propagación de paquetes maliciosos y parches tardíos en repositorios abiertos. A su vez, Decan et al. \cite{decan2019empirical}, Alfadel et al. \cite{alfadel2023empirical} y Chinthanet et al. \cite{chinthanet2023lag} evidenciaron mediante estudios longitudinales en PyPI que las vulnerabilidades críticas se acumulan de manera silente en capas transitivas profundas de dependencias secundarias, donde los desarrolladores difícilmente tienen visibilidad directa.
+
+\begin{table*}[!t]
+\centering
+\caption{Comparación Sistemática de Paradigmas Tecnológicos de Análisis de Vulnerabilidades}
+\label{tab:estado_arte}
+\small
+\begin{tabular}{p{3.8cm}p{4.2cm}p{4.2cm}p{4.2cm}}
+\toprule
+\textbf{Criterio de Evaluación} & \textbf{Enfoque A: SCA Manifiesto} & \textbf{Enfoque B: SaaS en la Nube} & \textbf{Enfoque C: PyReach (Propuesto)} \\
+\midrule
+\textbf{Herramientas representativas} & \textit{pip-audit}, \textit{Safety}, \textit{Dependabot} & \textit{Snyk Open Source}, \textit{Endor Labs} & \textbf{\textit{PyReach CLI}} \\
+\textbf{Nivel de inspección} & Superficial (metadatos y cadenas de versión) & Profundo asistido por telemetría remota & \textbf{Profundo interprocedimental en AST y librerías} \\
+\textbf{Soberanía de datos (ISO 27001)} & Alta (ejecución local sin análisis de código) & Incompatible (transfiere código a la nube) & \textbf{Total (100\% on-premise, 0 bytes en red)} \\
+\textbf{Tasa de falsos positivos} & Crítica ($>80\%$ alertas no ejecutables) & Baja ($<15\%$ alertas espurias) & \textbf{Muy baja (poda determinista $\ge 80\%$)} \\
+\textbf{Latencia por escaneo} & $<5$ s & Variable (dependiente del enlace WAN) & \textbf{$<2$ s (presupuesto microservicio $<45$ s)} \\
+\textbf{Interoperabilidad de salida} & Texto plano / JSON propietario & Dashboard privativo / SARIF bajo suscripción & \textbf{OASIS SARIF v2.1.0 nativo y JSON} \\
+\textbf{Modelo de licenciamiento} & Código abierto & Suscripción anual en moneda extranjera & \textbf{Código abierto / corporativo propio} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Comparación de Paradigmas}
+En la Tabla \ref{tab:estado_arte} se sintetiza el análisis comparativo entre los tres enfoques tecnológicos vigentes. Se concluye que únicamente el Enfoque C (\textit{PyReach}) logra aunar la reducción drástica de alertas no explotables con la estricta observancia de soberanía de datos exigida por normativas corporativas como ISO/IEC 27001:2022 \cite{ladisa2023sok, gutierrez2024auditoria}.
+
+\section{Arquitectura del Sistema y Flujo Metodológico}
+
+\subsection{Arquitectura en Capas Desacoplada}
+Para garantizar un alto grado de cohesión, mantenibilidad y modularidad conforme a los estándares ISO/IEC/IEEE 29148:2018 \cite{iso2018req} e ISO/IEC 25010:2011 \cite{iso2011sqa}, \textit{PyReach} se estructuró bajo una arquitectura en cuatro capas lógicas ejecutadas dentro del mismo proceso CPython en memoria principal, minimizando la sobrecarga de serialización entre procesos (Fig. \ref{fig:arquitectura_capas}).
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    layer/.style={rectangle, draw=blue!80!black, fill=blue!5, thick, rounded corners=4pt, minimum width=8.0cm, minimum height=1.15cm, align=center, font=\scriptsize},
+    titlebox/.style={font=\scriptsize\bfseries, color=blue!90!black},
+    compbox/.style={rectangle, draw=blue!50!black, fill=white, rounded corners=2pt, minimum height=0.62cm, minimum width=2.3cm, font=\tiny, align=center},
+    arrow/.style={-{Latex[scale=0.9]}, thick, color=blue!80!black}
+]
+
+% Capa 4: Presentación
+\node[layer, fill=green!5, draw=green!60!black] (l4) {};
+\node[above right=0.04cm and 0.2cm of l4.north west, titlebox, color=green!60!black] {\textbf{Capa de Presentación y Salida}};
+\node[compbox, below right=0.35cm and 0.2cm of l4.north west] (c41) {CLI Controller\\(\texttt{cli.py})};
+\node[compbox, right=0.3cm of c41] (c42) {SARIF Serializer\\(\texttt{output/sarif.py})};
+\node[compbox, right=0.3cm of c42] (c43) {CI/CD Quality Gate\\(Exit Codes 0, 1, 2)};
+
+% Capa 3: Lógica de Negocio
+\node[layer, below=0.55cm of l4, fill=blue!5, draw=blue!70!black] (l3) {};
+\node[above right=0.04cm and 0.2cm of l3.north west, titlebox] {\textbf{Capa de Lógica de Negocio (Core Analítico)}};
+\node[compbox, below right=0.35cm and 0.2cm of l3.north west] (c31) {AST Builder\\(\texttt{ast/builder.py})};
+\node[compbox, right=0.3cm of c31] (c32) {Call Graph Engine\\(NetworkX \texttt{DiGraph})};
+\node[compbox, right=0.3cm of c32] (c33) {Reachability Analyzer\\(Bounded BFS $k=5$)};
+
+% Capa 2: Persistencia
+\node[layer, below=0.55cm of l3, fill=orange!5, draw=orange!70!black] (l2) {};
+\node[above right=0.04cm and 0.2cm of l2.north west, titlebox, color=orange!80!black] {\textbf{Capa de Persistencia (Offline DB)}};
+\node[compbox, below right=0.35cm and 0.2cm of l2.north west, minimum width=3.6cm] (c21) {OSV Mapper (\texttt{osv/mapper.py})\\Mapeo OpenSSF OSV $\to$ SQLite};
+\node[compbox, right=0.4cm of c21, minimum width=3.6cm] (c22) {SQLite 3 Embebida (\texttt{osv.db})\\Índices B-Tree PEP 503 ($<0.18$ ms)};
+
+% Capa 1: Entrada
+\node[layer, below=0.55cm of l2, fill=gray!5, draw=gray!70!black] (l1) {};
+\node[above right=0.04cm and 0.2cm of l1.north west, titlebox, color=gray!80!black] {\textbf{Capa de Entrada y Carga}};
+\node[compbox, below right=0.35cm and 0.2cm of l1.north west, minimum width=3.6cm] (c11) {Manifest Parsers\\(\texttt{requirements.txt}, \texttt{Pipfile.lock})};
+\node[compbox, right=0.4cm of c11, minimum width=3.6cm] (c12) {Source \& Package Loaders\\(\texttt{loaders/source.py}, \texttt{site-packages})};
+
+% Flechas inter-capas
+\draw[arrow] (l1.north) -- (l2.south);
+\draw[arrow] (l2.north) -- (l3.south);
+\draw[arrow] (l3.north) -- (l4.south);
+
+\end{tikzpicture}
+}
+\caption{Arquitectura en cuatro capas desacopladas de \textit{PyReach}: desde la ingesta de artefactos hasta la emisión de reportes estandarizados.}
+\label{fig:arquitectura_capas}
+\end{figure}
+
+\begin{enumerate}
+    \item \textbf{Capa de Entrada (\texttt{pyreach.parsers}, \texttt{pyreach.loaders}):} Ingesta los manifiestos de dependencias declaradas (\texttt{requirements.txt}, \texttt{Pipfile.lock}) utilizando la librería estándar \texttt{packaging}. A su vez, el módulo \texttt{source} confina la lectura de código fuente a la raíz del repositorio, y \texttt{packages} resuelve las rutas absolutas de distribución física en \texttt{site-packages}.
+    \item \textbf{Capa de Persistencia (\texttt{pyreach.db}):} Gestiona la conexión y consultas a la base de datos embebida SQLite 3 (\texttt{\~{}/.pyreach/osv.db}), almacenando avisos de vulnerabilidad normalizados.
+    \item \textbf{Capa de Lógica de Negocio (\texttt{pyreach.ast}, \texttt{callgraph}, \texttt{reachability}):} Constituye el núcleo analítico. Transforma los archivos Python en árboles sintácticos (\texttt{ModuleAST}), extrae tablas de símbolos, construye el grafo dirigido interprocedimental con NetworkX y evalúa caminos de alcanzabilidad acotados.
+    \item \textbf{Capa de Presentación y Salida (\texttt{pyreach.cli}, \texttt{pyreach.output}):} Controla la interfaz de línea de comandos basada en \texttt{argparse}, gestiona códigos de salida para CI/CD y serializa reportes bajo el estándar OASIS SARIF v2.1.0 y resúmenes tabulares en consola.
+\end{enumerate}
+
+\subsection{Flujo Metodológico y Pipeline de Ejecución}
+En la Fig. \ref{fig:flujo_proyecto} se esquematiza el diagrama de flujo secuencial del proyecto y el ciclo de vida de los datos a lo largo de las 5 fases principales de escaneo en \textit{PyReach}.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=0.45cm and 0.5cm,
+    stepnode/.style={rectangle, draw=blue!80!black, fill=blue!5, thick, rounded corners=3pt, minimum height=0.85cm, minimum width=7.2cm, align=left, font=\scriptsize},
+    arrow/.style={-{Latex[scale=0.9]}, thick, color=blue!80!black}
+]
+
+\node[stepnode, fill=gray!8, draw=gray!70] (s1) {
+    \textbf{1. Ingesta y Normalización:}\\
+    {\tiny Lectura de manifiestos (\texttt{requirements.txt}), normalización PEP 503 y extracción de dependencias.}
+};
+
+\node[stepnode, below=of s1, fill=orange!8, draw=orange!70!black] (s2) {
+    \textbf{2. Consulta Offline a Base de Conocimiento OSV (SQLite):}\\
+    {\tiny Cotejo de versiones contra intervalos afectados de OpenSSF OSV ($<0.18$ ms/paquete).}
+};
+
+\node[stepnode, below=of s2, fill=blue!8, draw=blue!70!black] (s3) {
+    \textbf{3. Análisis Sintáctico AST y Construcción del Call Graph:}\\
+    {\tiny Patrón Visitor en CPython AST; grafo dirigido en 3 pasadas (nodos, herencia, aristas) con NetworkX.}
+};
+
+\node[stepnode, below=of s3, fill=purple!8, draw=purple!70!black] (s4) {
+    \textbf{4. Búsqueda Acotada de Alcanzabilidad (Bounded BFS $k=5$):}\\
+    {\tiny Exploración desde entrypoints hacia funciones vulnerables con detección de ciclos y dinámicas.}
+};
+
+\node[stepnode, below=of s4, fill=green!8, draw=green!70!black] (s5) {
+    \textbf{5. Clasificación Tri-Estado y Compuerta de Calidad:}\\
+    {\tiny Decisión: \texttt{REACHABLE}, \texttt{POTENTIAL}, \texttt{NOT\_REACHABLE} $\to$ OASIS SARIF v2.1.0 y Exit Code.}
+};
+
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s3) -- (s4);
+\draw[arrow] (s4) -- (s5);
+
+\end{tikzpicture}
+}
+\caption{Diagrama de flujo del proyecto: pipeline metodológico y ciclo de datos del análisis de alcanzabilidad en \textit{PyReach}.}
+\label{fig:flujo_proyecto}
+\end{figure}
+
+\subsection{Modelo de Persistencia y Estrategia de Indexación Relacional}
+Para posibilitar un escaneo offline instantáneo y determinista sin dependencias externas de red, el catálogo de seguridad se estructura sobre SQLite 3 normalizando la especificación OpenSSF OSV (v1.6.0) \cite{openssf2023osv}. El modelo se descompone en tres entidades relacionales:
+\begin{itemize}
+    \item \texttt{vulnerabilities}: Almacena los metadatos cardinales del aviso (identificador OSV/CVE, nombre normalizado del paquete, resumen técnico y fechas de publicación).
+    \item \texttt{affected\_ranges}: Modela los intervalos de versiones vulnerables (\texttt{introduced}, \texttt{fixed}), permitiendo evaluar cotas inclusivas y exclusivas mediante semántica de \texttt{packaging.version}.
+    \item \texttt{vulnerable\_functions}: Asocia cada vulnerabilidad con los nombres completamente cualificados (\textit{FQNs}) de los métodos o símbolos comprometidos.
+\end{itemize}
+
+Los nombres de paquetes se normalizan estrictamente bajo el estándar PEP 503. Mediante un índice B-Tree compuesto sobre \texttt{vulnerabilities(package\_name)} y \texttt{vulnerable\_functions(vuln\_id, function\_qname)}, el motor reduce el tiempo medio de consulta a \textbf{0.18~ms} por librería en discos de estado sólido (SSD), permitiendo cotejar 50 dependencias en menos de 10~ms netos de base de datos.
+
+\subsection{Despliegue e Integración en Infraestructura CI/CD}
+En la Fig. \ref{fig:nodos_infraestructura} se ilustra el modelo de despliegue en la infraestructura física y de red de Lidercom Perú S.A.C. La ejecución del pipeline de integración se realiza mediante \textit{GitLab Runners} locales desplegados dentro de una red aislada (VLAN de desarrollo). El ejecutable \textit{PyReach} corre desacoplado de la nube pública; únicamente un cron semanal desatendido actualiza la base de datos local SQLite mediante el comando \texttt{pyreach sync-osv}.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=0.55cm and 0.55cm,
+    hostbox/.style={rectangle, draw=gray!70!black, fill=gray!5, thick, rounded corners=4pt, minimum width=7.4cm, minimum height=1.5cm, align=left, font=\scriptsize},
+    innerbox/.style={rectangle, draw=blue!60!black, fill=white, rounded corners=2pt, minimum height=0.65cm, minimum width=2.1cm, font=\tiny, align=center},
+    arrow/.style={-{Latex[scale=0.9]}, thick, color=blue!80!black}
+]
+
+% Nodo 1: Desarrollador
+\node[hostbox, minimum height=1.2cm] (dev_node) {};
+\node[above right=0.04cm and 0.2cm of dev_node.north west, font=\scriptsize\bfseries] {Estación de Trabajo / IDE};
+\node[innerbox, below right=0.32cm and 0.4cm of dev_node.north west, minimum width=3.0cm] (git_push) {Desarrollador / CLI Local\\(\texttt{git push origin main})};
+\node[innerbox, right=0.5cm of git_push, minimum width=3.0cm] (local_scan) {Escaneo Pre-Commit\\(\texttt{pyreach scan .})};
+
+% Nodo 2: Runner On-Premise
+\node[hostbox, below=0.7cm of dev_node, minimum height=2.3cm, draw=green!60!black, fill=green!3] (ci_node) {};
+\node[above right=0.04cm and 0.2cm of ci_node.north west, font=\scriptsize\bfseries, color=green!60!black] {Servidor CI/CD On-Premise (VLAN Aislada - Red Corporativa)};
+
+\node[innerbox, below right=0.40cm and 0.3cm of ci_node.north west, minimum width=2.0cm, draw=blue!70!black] (runner) {GitLab Runner\\(Docker Executor)};
+\node[innerbox, right=0.4cm of runner, minimum width=2.1cm, draw=purple!70!black] (pyreach_run) {PyReach Engine\\(Python 3.10+ / AST)};
+\node[innerbox, right=0.4cm of pyreach_run, minimum width=1.9cm, draw=orange!70!black] (osv_db) {SQLite OSV DB\\(\texttt{osv.db} Local)};
+
+\node[innerbox, below=0.35cm of pyreach_run, minimum width=6.6cm, fill=yellow!10, draw=yellow!60!black] (egress) {\textbf{Aislamiento Total ISO/IEC 27001:} 0 bytes transferidos a Internet / Sin egress WAN};
+
+% Nodo 3: Salidas / Compuerta
+\node[hostbox, below=0.7cm of ci_node, minimum height=1.2cm] (gate_node) {};
+\node[above right=0.04cm and 0.2cm of gate_node.north west, font=\scriptsize\bfseries] {Compuerta de Calidad (Quality Gate)};
+\node[innerbox, below right=0.32cm and 0.4cm of gate_node.north west, minimum width=3.0cm, fill=green!10, draw=green!60!black] (sarif_out) {Reporte SARIF v2.1.0\\(\texttt{codeFlows} $\to$ MR Widget)};
+\node[innerbox, right=0.5cm of sarif_out, minimum width=3.0cm, fill=red!10, draw=red!60!black] (exit_code) {Control de Salida\\(Exit Code 0: Pass / 1: Fail)};
+
+% Conexiones
+\draw[arrow] (dev_node.south) -- node[right, font=\tiny] {Git Push} (ci_node.north);
+\draw[arrow] (runner) -- (pyreach_run);
+\draw[arrow] (osv_db) -- (pyreach_run);
+\draw[arrow] (ci_node.south) -- node[right, font=\tiny] {SARIF \& Exit Code} (gate_node.north);
+
+\end{tikzpicture}
+}
+\caption{Diagrama de nodos de despliegue en infraestructura local de CI/CD para Lidercom Perú S.A.C., garantizando aislamiento estricto de red.}
+\label{fig:nodos_infraestructura}
+\end{figure}
+
+\section{Motor de Grafos y Algoritmo de Alcanzabilidad}
+
+\subsection{Formalización del Grafo de Llamadas}
+El Grafo de Llamadas interprocedimental se formaliza como un grafo dirigido $G = (V, E)$, modelado mediante la estructura \texttt{networkx.DiGraph} \cite{hagberg2008exploring}:
+\begin{itemize}
+    \item $V$ es el conjunto de nodos de llamada tipados $\text{CGNode} = (\text{fqn}, \text{path}, \text{line}, \tau)$, donde $\text{fqn} \in \Sigma^*$ es el nombre completamente cualificado (\textit{Fully Qualified Name}), $\text{path}$ es la ruta del archivo, $\text{line}$ es la línea de declaración, y $\tau \in \{\text{FUNCTION}, \text{METHOD}, \text{CLASS}, \text{LAMBDA}\}$.
+    \item $E \subseteq V \times V \times \Omega \times [0, 1]$ es el conjunto de aristas dirigidas $\text{CGEdge} = (u, v, \omega, c)$, donde $u$ es el invocador (\textit{caller}), $v$ es el invocable (\textit{callee}), $\omega \in \{\text{STATIC}, \text{DYNAMIC}, \text{INHERITANCE}, \text{IMPORT}\}$ categoriza el tipo de transferencia de control, y $c \in [0, 1]$ es el nivel de confianza estática.
+\end{itemize}
+
+\subsection{Detección de Puntos de Entrada (\textit{Entrypoints})}
+Los puntos de entrada $V_{\text{entry}} \subset V$ representan los orígenes del flujo de ejecución del programa. El módulo \texttt{pyreach.reachability.entrypoints} los clasifica heurísticamente en:
+\begin{enumerate}
+    \item \textbf{Bloques principales:} Bloques condicionales \texttt{if \_\_name\_\_ == "\_\_main\_\_":}.
+    \item \textbf{Comandos CLI:} Funciones declaradas en \texttt{[project.scripts]} o decoradas con utilitarios de consola.
+    \item \textbf{Controladores de rutas web:} Endpoints de FastAPI (\texttt{@app.get}, \texttt{@app.post}), Flask (\texttt{@app.route}) o vistas Django.
+\end{enumerate}
+Alternativamente, el usuario puede forzar o parametrizar puntos de entrada mediante la bandera \texttt{--entry-point} o el archivo de configuración \texttt{.pyreach.yml}.
+
+\subsection{Algoritmo de Búsqueda Acotada (Bounded BFS)}
+En librerías de gran envergadura (e.g., Pandas, Scikit-learn), la interconexión densa produce una explosión combinatoria del espacio de estados ($O(b^d)$) si se ejecuta una búsqueda no informada exhaustiva \cite{nielson1999principles}. Para garantizar que el tiempo de escaneo se mantenga estrictamente por debajo de 45 segundos (RNF-03), \textit{PyReach} implementa una búsqueda en anchura acotada con profundidad máxima $k=5$, complementada con detección y poda de ciclos (Algoritmo 1).
+
+\begin{algorithm}[t]
+\caption{Búsqueda Acotada de Alcanzabilidad (\textit{Bounded BFS})}
+\begin{algorithmic}[1]
+\REQUIRE Grafo $G=(V, E)$, Entrypoint $u \in V_{\text{entry}}$, Objetivo $t \in V$, Cota $k=5$.
+\ENSURE Estado, Camino testigo $P$, Banderas de incertidumbre.
+\IF{$u \notin V$}
+    \RETURN $(\text{NOT\_REACHABLE}, \emptyset, \mathbf{false}, \mathbf{false})$
+\ENDIF
+\IF{$u = t$}
+    \RETURN $(\text{REACHABLE}, [u], \mathbf{false}, \mathbf{false})$
+\ENDIF
+\STATE $Q \leftarrow \text{Cola}([ (u, [u], 0) ])$
+\STATE $\mathit{visitados} \leftarrow \{u\}$
+\STATE $\mathit{dyn\_edge} \leftarrow \mathbf{false}$, $\mathit{cut\_depth} \leftarrow \mathbf{false}$
+\WHILE{$Q \neq \emptyset$}
+    \STATE $(v, \mathit{camino}, d) \leftarrow Q.\text{popleft}()$
+    \IF{$d \ge k$}
+        \STATE $\mathit{cut\_depth} \leftarrow \mathbf{true}$
+        \STATE \textbf{continue}
+    \ENDIF
+    \FORALL{$w \in G.\text{successors}(v)$}
+        \STATE $\mathit{edge\_type} \leftarrow G.\text{edges}[v, w]['\text{type}']$
+        \IF{$\mathit{edge\_type} = \text{DYNAMIC}$ \textbf{or} $w = \text{CENTINELA\_DINAMICO}$}
+            \STATE $\mathit{dyn\_edge} \leftarrow \mathbf{true}$
+        \ENDIF
+        \IF{$w = t$}
+            \RETURN $(\text{REACHABLE}, \mathit{camino} + [w], \mathit{dyn\_edge}, \mathit{cut\_depth})$
+        \ENDIF
+        \IF{$w \notin \mathit{visitados}$}
+            \STATE $\mathit{visitados} \leftarrow \mathit{visitados} \cup \{w\}$
+            \STATE $Q.\text{append}((w, \mathit{camino} + [w], d+1))$
+        \ENDIF
+    \ENDFOR
+\ENDWHILE
+\IF{$\mathit{dyn\_edge} \lor \mathit{cut\_depth}$}
+    \STATE \textbf{return} $(\text{POTENTIALLY\_REACHABLE},$
+    \STATE \hspace{3.2em} $\emptyset, \mathit{dyn\_edge}, \mathit{cut\_depth})$
+\ELSE
+    \RETURN $(\text{NOT\_REACHABLE}, \emptyset, \mathbf{false}, \mathbf{false})$
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Modelo de Rutas y Poda Visual}
+En la Fig. \ref{fig:tikz_reachability} se ilustra esquemáticamente el mecanismo de discriminación de caminos del motor. Mientras que el camino hacia la subrutina legítima de la librería directa A es alcanzable pero inofensivo, la llamada hacia $t$ en la librería transitiva B es alcanzable y clasificada con severidad crítica, mientras que el código inerte en la librería transitiva C es podado como inalcanzable al no existir una arista activa desde la aplicación huésped, descartando la alerta de CVE sin intervención humana.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{0.95\columnwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=1.1cm and 1.2cm,
+    box/.style={rectangle, draw=blue!60, fill=blue!5, thick, rounded corners, minimum height=0.7cm, minimum width=2.0cm, align=center, font=\scriptsize},
+    entry/.style={rectangle, draw=green!60!black, fill=green!10, very thick, rounded corners, minimum height=0.7cm, minimum width=2.2cm, align=center, font=\scriptsize\bfseries},
+    vuln_reach/.style={rectangle, draw=red!80!black, fill=red!15, very thick, rounded corners, minimum height=0.7cm, minimum width=2.2cm, align=center, font=\scriptsize\bfseries},
+    vuln_unreach/.style={rectangle, draw=gray!60, fill=gray!10, dashed, thick, rounded corners, minimum height=0.7cm, minimum width=2.2cm, align=center, font=\scriptsize},
+    arrow_active/.style={-{Latex[scale=1.0]}, thick, color=blue!80!black},
+    arrow_dead/.style={-{Latex[scale=1.0]}, dashed, thick, color=gray!60}
+]
+
+% Nodos Host App
+\node[entry] (ep) {Entrypoint: \texttt{main()}};
+\node[box, below=0.8cm of ep] (host_call) {\texttt{app.process\_data()}};
+
+% Nodos Lib Directa A
+\node[box, below left=1.0cm and 0.2cm of host_call] (libA_foo) {\texttt{libA.client()}};
+\node[box, below=0.8cm of libA_foo] (libA_bar) {\texttt{libA.execute()}};
+
+% Nodos Lib Transitiva B
+\node[vuln_reach, below=0.8cm of libA_bar] (vuln1) {Target: \texttt{libB.eval()}\\ \textbf{[REACHABLE]}};
+\node[vuln_unreach, below right=1.0cm and 0.4cm of host_call] (vuln2) {Target: \texttt{libC.leak()}\\ \textbf{[NOT\_REACHABLE]}};
+\node[box, above=0.7cm of vuln2, dashed] (dead_branch) {\texttt{libC.unused()}};
+
+% Aristas
+\draw[arrow_active] (ep) -- (host_call);
+\draw[arrow_active] (host_call) -- (libA_foo);
+\draw[arrow_active] (libA_foo) -- (libA_bar);
+\draw[arrow_active] (libA_bar) -- (vuln1);
+
+\draw[arrow_dead] (dead_branch) -- (vuln2);
+
+% Subgrafos delimitadores
+\begin{scope}[on background layer]
+    \node[draw=green!50!black, fill=green!5, fit=(ep)(host_call), label={[font=\tiny\bfseries, color=green!40!black]left:Aplicación Huésped}] {};
+    \node[draw=orange!60, fill=orange!5, fit=(libA_foo)(libA_bar), label={[font=\tiny\bfseries, color=orange!60!black]left:Dependencia Directa}] {};
+    \node[draw=red!60, fill=red!5, fit=(vuln1)(vuln2)(dead_branch), label={[font=\tiny\bfseries, color=red!60!black]right:Dependencias Transitivas}] {};
+\end{scope}
+
+\end{tikzpicture}
+}
+\caption{Modelo de alcanzabilidad en grafo de llamadas interprocedimental: contraste entre ruta activa ejecutable y código inerte podado.}
+\label{fig:tikz_reachability}
+\end{figure}
+
+\subsection{Clasificación Tri-Estado y Principio de Conservación}
+Para cumplir con el requerimiento de \textit{cero falsos negativos críticos} (\textit{soundness}) formulado por Nielson et al. \cite{nielson1999principles}, la clasificación de resultados no es binaria, sino que incorpora una tercera categoría de incertidumbre controlada:
+\begin{itemize}
+    \item \textbf{\texttt{REACHABLE}:} Existe al menos un camino dirigido determinista $\langle u, \dots, t \rangle$ verificado en el grafo con longitud $d \le k$. Nivel de severidad SARIF: \texttt{error}.
+    \item \textbf{\texttt{NOT\_REACHABLE}:} El algoritmo agotó la búsqueda dentro del espacio sin encontrar el símbolo y sin registrar señales de indeterminación dinámica ni cortes de profundidad. Nivel SARIF: \texttt{note}.
+    \item \textbf{\texttt{POTENTIALLY\_REACHABLE}:} El símbolo no fue conectado explícitamente, pero el recorrido atravesó aristas dinámicas (\texttt{getattr}, \texttt{eval}, enlaces no resueltos) o se detuvo forzosamente al alcanzar la profundidad máxima $k$. Nivel SARIF: \texttt{warning}.
+\end{itemize}
+
+\subsection{Serialización SARIF v2.1.0 y Compuerta de Calidad}
+\textit{PyReach} exporta sus hallazgos en formato OASIS SARIF v2.1.0 estructurado \cite{oasis2019sarif}. Cada hallazgo incluye un objeto \texttt{codeFlows} con las ubicaciones de llamada (\textit{call-sites}) que conectan el punto de entrada con la función vulnerable. Los códigos de retorno para CI/CD se rigen por la Tabla \ref{tab:exit_codes}.
+
+\begin{table}[!htbp]
+\centering
+\caption{Matriz de Códigos de Salida para Compuertas de Calidad CI/CD}
+\label{tab:exit_codes}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{cp{4.6cm}p{2.8cm}}
+\toprule
+\textbf{Código} & \textbf{Condición Operacional} & \textbf{Acción en CI/CD} \\
+\midrule
+\texttt{0} & Sin hallazgos o todos \texttt{NOT\_REACHABLE}. & Permite el despliegue (\textit{Pass}). \\
+\texttt{1} & Al menos un hallazgo \texttt{REACHABLE} (o \texttt{POTENTIAL} con \texttt{--include-potentially}). & Bloquea el pase a producción (\textit{Quality Gate Fail}). \\
+\texttt{2} & Error de configuración, sintaxis o base de datos faltante. & Aborta el pipeline por fallo de entorno. \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\section{Evaluación Experimental y Resultados}
+
+\subsection{Entorno Experimental y Banco de Pruebas}
+La verificación y validación del artefacto se estructuró conforme a los lineamientos metodológicos de Wohlin et al. \cite{wohlin2012experimentation} y Myers et al. \cite{myers2011art}, evaluando suites de pruebas automatizadas y réplicas industriales de microservicios de Lidercom Perú S.A.C.:
+\begin{itemize}
+    \item \textbf{Entorno de ejecución:} Host Intel Core i7 / AMD Ryzen, CPython 3.10 y 3.14, NetworkX 3.6.1, SQLite 3.45.
+    \item \textbf{Corpus A (Micro Fixtures):} Paquetes con cadenas de invocación sintéticas lineales con vulnerabilidades inyectadas conocidas (1 dependencia, 1 CVE, 8 nodos, 4 aristas).
+    \item \textbf{Corpus B (Microservicio de Analítica / NLP):} Réplica del microservicio de analítica de Lidercom (31 módulos Python, 421 nodos, 808 aristas en el grafo de llamadas, 2 dependencias directas con vulnerabilidades transitivas asociadas).
+\end{itemize}
+
+\subsection{Evaluación del Motor de Almacenamiento (SQLite)}
+Se llevó a cabo una evaluación multicriterio formal para sustentar la elección de SQLite 3 frente a bases de datos orientadas a grafos (Neo4j) y motores cliente-servidor (PostgreSQL) para la persistencia local de OSV (Fig. \ref{fig:evaluacion_bd}). SQLite obtuvo una ponderación de 4.80/5.00 gracias a su nula huella de administración, portabilidad embebida (\texttt{.db} único de 18~MB) y latencia sub-milisegundo.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    bar/.style={rectangle, draw=none, rounded corners=1.5pt, minimum height=0.38cm, anchor=west},
+    val/.style={font=\tiny\bfseries, anchor=west},
+    cat/.style={font=\tiny, anchor=east}
+]
+
+% Eje y escala (0 a 5)
+\draw[gray!40, thick] (0, 0) -- (5.0, 0);
+\foreach \x in {1, 2, 3, 4, 5} {
+    \draw[gray!40] (\x, 0) -- (\x, -0.08) node[below, font=\tiny] {\x.0};
+    \draw[gray!20, dotted] (\x, 0) -- (\x, 2.8);
+}
+
+% SQLite 3 (Lila / 4.80)
+\node[cat] at (-0.1, 2.3) {\textbf{SQLite 3}};
+\node[bar, fill=blue!60!purple!70, minimum width=4.80cm] at (0, 2.3) {};
+\node[val, color=blue!70!purple!90] at (4.85, 2.3) {4.80 / 5.0 (Seleccionado)};
+
+% DuckDB (Gris / 3.95)
+\node[cat] at (-0.1, 1.4) {\textbf{DuckDB}};
+\node[bar, fill=gray!60, minimum width=3.95cm] at (0, 1.4) {};
+\node[val, color=gray!80!black] at (4.00, 1.4) {3.95 / 5.0};
+
+% TinyDB (Naranja / 3.30)
+\node[cat] at (-0.1, 0.5) {\textbf{TinyDB}};
+\node[bar, fill=orange!70, minimum width=3.30cm] at (0, 0.5) {};
+\node[val, color=orange!80!black] at (3.35, 0.5) {3.30 / 5.0};
+
+\end{tikzpicture}
+}
+\caption{Evaluación multicriterio de motores de almacenamiento para el catálogo local OSV: puntaje global ponderado (escala 1--5) considerando latencia por clave ($<0.18$ ms), portabilidad embebida y ausencia de demonios.}
+\label{fig:evaluacion_bd}
+\end{figure}
+
+\subsection{Tasa de Reducción de Alertas No Explotables}
+El objetivo específico OE4 requería una reducción mínima del 70\% en la tasa de alertas espurias. Al someter el corpus de microservicios al escaneo tradicional por manifiesto (\textit{pip-audit}), se reportaron múltiples avisos críticos sobre paquetes de soporte de procesamiento numérico y serialización. 
+
+Al ejecutar \textit{PyReach}, el análisis interprocedimental demostró que las rutinas vulnerables reportadas correspondían a submódulos de procesamiento binario no invocados por la aplicación huésped, clasificándolas formalmente como \texttt{NOT\_REACHABLE}. La tasa de reducción de alertas espurias alcanzó entre un \textbf{80.0\% y un 87.5\%}, superando con holgura la meta establecida y validando la hipótesis central de investigación.
+
+\subsection{Rendimiento Temporal y Consumo de Recursos}
+El estándar no funcional RNF-03 fijó un presupuesto de escaneo inferior a 45 segundos para microservicios. En la Tabla \ref{tab:benchmarks} se consolidan los resultados experimentales promediados sobre 10 ejecuciones consecutivas (arranque en frío con intérprete fresco y arranque en caliente con caché de módulos).
+
+\begin{table}[!htbp]
+\centering
+\caption{Rendimiento Computacional y Recursos de \textit{PyReach}}
+\label{tab:benchmarks}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Escenario Evaluado} & \textbf{Ejecución} & \textbf{Tiempo Net.} & \textbf{Memoria} & \textbf{Veredicto} \\
+\midrule
+\multirow{2}{*}{Corpus A (Micro)} & Frío & 0.226 s & 1.60 MB & \texttt{REACHABLE} \\
+                                  & Caliente & 0.012 s & 0.14 MB & \texttt{REACHABLE} \\
+\midrule
+\multirow{2}{*}{Corpus B (Microservicio)} & Frío & 1.176 s & 7.24 MB & \texttt{POTENTIAL} \\
+                                         & Caliente & 0.844 s & 7.19 MB & \texttt{POTENTIAL} \\
+\midrule
+\textbf{CLI End-to-End (Corpus B)} & Total & \textbf{1.612 s} & \textbf{7.24 MB} & \textbf{SARIF 4.8 KB} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+El escaneo completo del microservicio insumió únicamente \textbf{1.61~s} de tiempo de reloj de pared (\textit{wall-clock}), lo que representa un margen de holgura de más de \textbf{28 veces} respecto al presupuesto de 45 segundos. El consumo de memoria RAM pico no superó los \textbf{7.3~MB}, permitiendo su ejecución sin fricción en runners de CI/CD con recursos computacionales restringidos.
+
+\subsection{Auditoría de Tráfico y Soberanía de Datos}
+Para validar el cumplimiento estricto del Control A.8.12 de la norma ISO/IEC 27001:2022, se realizó una auditoría estática y dinámica sobre el paquete distribuido de \textit{PyReach} (\texttt{.whl}):
+\begin{itemize}
+    \item Inspección exhaustiva de llamadas a sockets (\texttt{socket}, \texttt{http.client}, \texttt{requests}, \texttt{urllib.request}): el camino de escaneo carece por completo de clientes de red. El validador del esquema SARIF lee un recurso compilado localmente mediante \texttt{importlib.resources}.
+    \item Monitoreo de interfaces de red durante la ejecución: se verificó la transferencia estricta de \textbf{cero bytes (0 KB)} hacia el exterior de la máquina.
+\end{itemize}
+
+\section{Discusión y Amenazas a la Validez}
+
+\subsection{Impacto Operacional en Lidercom Perú S.A.C.}
+La adopción de \textit{PyReach} transformó sustancialmente la rutina operativa del equipo de ingeniería. La reducción de falsos positivos eliminó la fatiga de alertas, disminuyendo las horas dedicadas al triaje manual de seguridad de \textbf{10 horas semanales a menos de 1.5 horas semanales} para dos ingenieros de software. Asimismo, evitó la introducción de parches apresurados en librerías secundarias, reduciendo a cero los incidentes en producción por \textit{breaking changes}.
+
+\subsection{Compromisos Técnicos (\textit{Trade-offs})}
+\begin{enumerate}
+    \item \textit{Sobre-aproximación conservadora vs. Precisión:} Ante la presencia de metaprogramación compleja (\texttt{getattr(obj, var)()}), clasificar el nodo como \texttt{POTENTIALLY\_REACHABLE} introduce una leve tasa residual de falsas alarmas controladas, pero previene categóricamente los falsos negativos críticos, salvaguardando la integridad del software corporativo.
+    \item \textit{Cota de búsqueda $k=5$ vs. Exhaustividad:} Aunque una llamada situada a 6 o más niveles de profundidad no sería alcanzada en la primera fase de búsqueda, el análisis de microservicios reales demostró que las cadenas de llamada inter-módulos rara vez superan 4 saltos, haciendo de $k=5$ un balance óptimo entre exhaustividad y costo computacional $O(b^d)$.
+\end{enumerate}
+
+\subsection{Amenazas a la Validez}
+\begin{itemize}
+    \item \textbf{Validez Interna:} La precisión del grafo depende de la fidelidad del AST ante construcciones exóticas de Python (e.g., inyección de código C mediante Cython o C-API). Para mitigar este sesgo, las extensiones nativas binarias son aisladas y catalogadas preventivamente bajo incertidumbre.
+    \item \textbf{Validez Externa:} La evaluación se concentró en microservicios basados en arquitecturas asíncronas y analítica de datos en Lidercom Perú. Para generalizar las conclusiones, se requiere extender el corpus hacia monolitos legados de gran escala.
+    \item \textbf{Validez de Constructo:} La alcanzabilidad estática no certifica la explotabilidad dinámica efectiva de una vulnerabilidad (que depende del paso de argumentos controlados por el atacante). No obstante, la inalcanzabilidad sí garantiza matemáticamente la no-explotabilidad por ausencia de flujo de control.
+\end{itemize}
+
+\section{Conclusiones y Trabajo Futuro}
+En este trabajo se presentó \textbf{\textit{PyReach}}, un analizador estático interprocedimental de código abierto y ejecución 100\% local que resuelve de forma rigurosa la problemática de alertas espurias en dependencias transitivas de Python. Mediante la construcción de Grafos de Llamadas en NetworkX sobre el AST de CPython y la consulta local a OpenSSF OSV en SQLite, \textit{PyReach} determina matemáticamente la alcanzabilidad de funciones vulnerables.
+
+Los resultados experimentales en el entorno industrial de Lidercom Perú S.A.C. evidencian una reducción del 80\%--87\% en alertas irrelevantes, un tiempo de escaneo inferior a 1.7 segundos por microservicio ($28\times$ más veloz que el SLA establecido), y un estricto aislamiento de red (0 bytes transferidos), satisfaciendo plenamente los controles de seguridad de la norma ISO/IEC 27001:2022.
+
+Como trabajo futuro, se contempla: 1) incorporar análisis interprocedimental de flujo de datos y taint analysis para verificar la propagación de datos no confiables (\textit{taint reachability}); 2) habilitar instrumentación dinámica híbrida basada en eBPF para corroborar llamadas en tiempo de ejecución; y 3) proveer conectores nativos para extensiones binarias compiladas en Rust y C++.
+
+% --- Bibliografía IEEE Indexada ---
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+\end{document}

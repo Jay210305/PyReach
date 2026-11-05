@@ -130,7 +130,16 @@ uv run pyreach tests/fixtures/projects/linear_reachable -f text
 
 ## Definition of Done
 
-- [ ] Config loader + tests merged.
-- [ ] Precedence rules match the spec.
-- [ ] `PyYAML` dependency declared.
-- [ ] Feature cleanly removable if cut.
+- [x] Config loader + tests merged (`pyreach/config.py`, `tests/unit/test_config.py` — 29 passed).
+- [x] Precedence rules match the spec (CLI > project > user-global > defaults; unions additive; `--include-potentially` ORs).
+- [x] `PyYAML` dependency declared (`pyproject.toml`, already present `pyyaml>=6.0`, 6.0.3 installed).
+- [x] Feature cleanly removable if cut (isolated behind `load_config`/`resolve_config`).
+
+Notes (2026-10-08):
+- Parser sentinel defaults (`None`) from S4-T3 reused verbatim for precedence.
+- `run_scan` propagates `thresholds.fail_on_potentially` into `args.include_potentially`
+  and `thresholds.fail_on_reachable` into `args.fail_on_reachable` (new `getattr` default
+  `True` in `compute_exit_code`, backward compatible for S4-T4).
+- Incidental R2 fix: `analyzer._package_imported` now compares PEP 503-normalized names
+  (`vuln-lib` vs `import vuln_lib` previously read as not imported -> false NOT_REACHABLE),
+  with regression tests in `tests/unit/reachability/test_analyzer.py`.

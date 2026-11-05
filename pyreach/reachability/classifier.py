@@ -51,20 +51,23 @@ class ReachabilityClassifier:
     ``06-ast-and-callgraph-engine.md`` §4.2:
 
     1. A proven static path -> ``REACHABLE``.
-    2. Package not imported -> ``NOT_REACHABLE`` (unless imports are unresolved).
-    3. Any dynamic/unresolved signal on the path -> ``POTENTIALLY_REACHABLE``.
-    4. Package imported but exact symbol node absent -> ``POTENTIALLY_REACHABLE``.
-    5. Exact node exists but imports unresolved -> ``POTENTIALLY_REACHABLE``.
-    6. Depth limit reached with no dynamic -> ``NOT_REACHABLE``.
+    2. Depth limit reached -> ``POTENTIALLY_REACHABLE``.
+    3. Package not imported -> ``NOT_REACHABLE`` (unless imports are unresolved).
+    4. Any dynamic/unresolved signal on the path -> ``POTENTIALLY_REACHABLE``.
+    5. Package imported but exact symbol node absent -> ``POTENTIALLY_REACHABLE``.
+    6. Exact node exists but imports unresolved -> ``POTENTIALLY_REACHABLE``.
     7. Otherwise (no path, clean) -> ``NOT_REACHABLE``.
 
-    Rule 2 precedes rule 3 so a dynamic edge elsewhere in the graph cannot turn
+    Rule 3 precedes rule 4 so a dynamic edge elsewhere in the graph cannot turn
     an unimported-package symbol into ``POTENTIALLY_REACHABLE`` (matrix row 4).
     """
 
     def classify(self, evidence: TraversalOutcome, context: SymbolContext) -> ReachabilityResult:
         if evidence.status == "REACHABLE" and evidence.paths:
             return self._reachable(evidence, context)
+
+        if context.max_depth_exceeded or evidence.depth_exceeded:
+            return self._result(context, "POTENTIALLY_REACHABLE", REASON_DEPTH)
 
         if not context.package_imported:
             if context.unresolved_imports:
@@ -79,9 +82,6 @@ class ReachabilityClassifier:
 
         if context.unresolved_imports:
             return self._result(context, "POTENTIALLY_REACHABLE", REASON_UNRESOLVED_IMPORTS)
-
-        if context.max_depth_exceeded or evidence.depth_exceeded:
-            return self._result(context, "NOT_REACHABLE", REASON_DEPTH)
 
         return self._result(context, "NOT_REACHABLE", REASON_NO_PATH)
 
