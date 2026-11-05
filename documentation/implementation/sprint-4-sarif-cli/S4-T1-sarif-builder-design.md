@@ -131,7 +131,10 @@ python -c "import json,jsonschema; jsonschema.validate(json.load(open('minimal.s
 
 ## Definition of Done
 
-- [ ] Class design reviewed by Julio.
-- [ ] Skeleton `to_dict()` classes merged.
-- [ ] Schema fixture cached.
-- [ ] Design tests green.
+- [x] Class design reviewed by Julio.
+- [x] Skeleton `to_dict()` classes merged.
+- [x] Schema fixture cached.
+- [x] Design tests green.
+
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

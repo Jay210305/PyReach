@@ -117,3 +117,5 @@ Notes (2026-10-14):
   job to preserve report ingestion when findings block deployment.
 - `sh -n` syntax test skips where POSIX `sh` is absent (Windows dev); runs on Linux CI.
 - No local Docker image dry-run was available; Dockerfile is statically asserted.
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

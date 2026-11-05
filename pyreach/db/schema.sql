@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS reachability_results (
     symbol_fqn TEXT NOT NULL,
     entry_point_fqn TEXT NOT NULL,
     result TEXT CHECK(result IN ('REACHABLE', 'NOT_REACHABLE', 'POTENTIALLY_REACHABLE')),
-    max_depth INTEGER CHECK(max_depth IS NULL OR (max_depth BETWEEN 1 AND 5)),
+    max_depth INTEGER CHECK(max_depth IS NULL OR (max_depth BETWEEN 0 AND 7)),
     path_json TEXT,  -- JSON array of node_fqn strings representing the path
     computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(symbol_fqn, entry_point_fqn, max_depth)
@@ -133,3 +133,10 @@ CREATE TABLE IF NOT EXISTS sync_metadata (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS advisory_packages (
+    advisory_id INTEGER NOT NULL REFERENCES advisories(id) ON DELETE CASCADE,
+    package_name TEXT NOT NULL,
+    PRIMARY KEY (advisory_id, package_name)
+);
+CREATE INDEX IF NOT EXISTS idx_advisory_packages_name ON advisory_packages(package_name);

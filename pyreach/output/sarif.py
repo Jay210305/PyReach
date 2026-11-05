@@ -11,6 +11,7 @@ import json
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any
 
 import networkx as nx
 
@@ -407,6 +408,29 @@ def _project_root_uri(project_root: Path) -> str:
     return uri if uri.endswith("/") else uri + "/"
 
 
+def write_report(path: Path | str, document: object) -> None:
+    """Write a complete UTF-8 report atomically within its destination directory."""
+    import os
+    import tempfile
+
+    target = Path(path)
+    temporary: str | None = None
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=target.parent, delete=False
+        ) as f:
+            temporary = f.name
+            f.write(document if isinstance(document, str) else json.dumps(document, indent=2))
+            f.write("\n")
+        os.replace(temporary, target)
+    except (OSError, ValueError, TypeError) as exc:
+        raise OutputError(f"Cannot write report {target}: {exc}") from exc
+    finally:
+        if temporary and Path(temporary).exists():
+            Path(temporary).unlink()
+
+
 class SarifBuilder:
     """Accumulate :class:`ReachabilityResult`s into one SARIF v2.1.0 document.
 
@@ -417,9 +441,8 @@ class SarifBuilder:
 
     def __init__(
         self,
-        tool_version: str,
-        project_root: Path,
-        *,
+        tool_version: str = "0.1.0",
+        project_root: str | Path = ".",
         graph: nx.DiGraph | None = None,
         installed_versions: dict[str, str] | None = None,
         arguments: list[str] | None = None,
@@ -437,6 +460,9 @@ class SarifBuilder:
             list(arguments) if arguments is not None else ["pyreach", str(self._project_root)]
         )
         self._pending: list[tuple[tuple[float, str, str, str, str], SarifResult]] = []
+
+    def location(self, symbol: str) -> dict[str, Any]:
+        return self._symbol_location(symbol).to_dict()
 
     def add_result(
         self,
@@ -456,7 +482,7 @@ class SarifBuilder:
             rule_index=RULE_INDEX[rule_id],
             level=STATUS_TO_LEVEL[result.status],
             message=SarifMessage(text=self._message_text(result, target, installed_version)),
-            locations=[self._symbol_location(target)],
+            locations=[self._symbol_location(target, fallback_to_app=True)],
             code_flows=self._code_flows(result),
             properties=self._properties(result, target, installed_version),
         )
@@ -486,7 +512,7 @@ class SarifBuilder:
         )
         return SarifReport(runs=[run]).to_dict()
 
-    def write(self, path: Path) -> None:
+    def write(self, path: Path | str) -> None:
         """Validate against the OASIS schema, then write to *path* as UTF-8 JSON.
 
         Validation is a hard gate (R3): an invalid document raises
@@ -495,12 +521,7 @@ class SarifBuilder:
         """
         doc = self.build()
         validate_sarif_document(doc)
-        out = Path(path)
-        try:
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-        except OSError as exc:
-            raise OutputError(f"Failed to write SARIF report to {out}: {exc}") from exc
+        write_report(path, doc)
 
     @staticmethod
     def _resolve_symbol(result: ReachabilityResult, symbol: str | None) -> str:
@@ -615,14 +636,15 @@ class SarifBuilder:
         artifact = self._artifact_location(file_path)
         if artifact is None:
             return None
+        region = SarifRegion(start_line=line) if isinstance(line, int) and line > 0 else None
         return SarifPhysicalLocation(
             artifact_location=artifact,
-            region=SarifRegion(start_line=line if line and line >= 1 else 1),
+            region=region,
         )
 
-    def _symbol_location(self, symbol: str) -> SarifLocation:
+    def _symbol_location(self, symbol: str, fallback_to_app: bool = False) -> SarifLocation:
         physical = self._physical_location(symbol)
-        if physical is None and self._graph is not None:
+        if physical is None and fallback_to_app and self._graph is not None:
             for node in sorted(self._graph):
                 candidate = self._physical_location(node)
                 if (

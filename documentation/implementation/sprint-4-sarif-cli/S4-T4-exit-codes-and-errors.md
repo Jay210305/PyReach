@@ -135,3 +135,5 @@ uv run pyreach tests/fixtures/projects/linear_reachable --no-fail; echo $LASTEXI
 - [x] Error messages match the UX table.
 - [x] E2E asserts process exit codes.
 - [x] No traceback leakage by default.
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

@@ -21,6 +21,7 @@ import ast
 import logging
 from collections import deque
 from collections.abc import Iterable
+from typing import Any
 
 import networkx as nx
 
@@ -44,108 +45,138 @@ _traversal_cache: dict[tuple[str, str, int], TraversalOutcome] = {}
 _package_cache: dict[tuple[str, str], bool] = {}
 
 
+class ReachabilityResults(dict[Any, ReachabilityResult]):
+    """Result mapping supporting both (osv_id, package_name, symbol) and (osv_id, symbol) keys."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._by_two: dict[tuple[str, str], ReachabilityResult] = {}
+
+    def __setitem__(self, key: Any, value: ReachabilityResult) -> None:
+        super().__setitem__(key, value)
+        if isinstance(key, tuple):
+            if len(key) == 3:
+                self._by_two[(key[0], key[2])] = value
+            elif len(key) == 2:
+                self._by_two[(key[0], key[1])] = value
+
+    def __getitem__(self, key: Any) -> ReachabilityResult:
+        if isinstance(key, tuple) and len(key) == 2 and key in self._by_two:
+            return self._by_two[key]
+        return super().__getitem__(key)
+
+    def __contains__(self, key: Any) -> bool:
+        if isinstance(key, tuple) and len(key) == 2 and key in self._by_two:
+            return True
+        return super().__contains__(key)
+
+    def get(self, key: Any, default: Any = None) -> Any:
+        if isinstance(key, tuple) and len(key) == 2 and key in self._by_two:
+            return self._by_two[key]
+        return super().get(key, default)
+
+
 def clear_cache() -> None:
     """Reset the in-memory traversal and package-import caches."""
     _traversal_cache.clear()
     _package_cache.clear()
 
 
-def _dynamic_import_targets(module: ModuleAST) -> set[str]:
-    """Top-level package names imported dynamically (``importlib.import_module``)."""
-    targets: set[str] = set()
-    for node in ast.walk(module.tree):
-        if not isinstance(node, ast.Call):
-            continue
-        func = node.func
-        is_dynamic_import = (isinstance(func, ast.Name) and func.id == "__import__") or (
-            isinstance(func, ast.Attribute) and func.attr == "import_module"
-        )
-        if not is_dynamic_import or not node.args:
-            continue
-        arg = node.args[0]
-        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
-            top = arg.value.split(".")[0]
-            if top:
-                targets.add(top)
-    return targets
-
-
 def imported_packages(modules: Iterable[ModuleAST]) -> set[str]:
-    """Return the set of top-level package names imported by *modules*.
-
-    This is the "application import set" consumed by ``package_imported``
-    detection (S3-T6 Pitfalls): library nodes in the graph must not count as
-    "imported by the application". Static imports (``import``/``from ...
-    import``) and dynamic imports (``importlib.import_module``/``__import__``)
-    both count, since a dynamically imported package is still reachable.
-    """
+    """Collect top-level package names imported by any module in *modules*."""
     packages: set[str] = set()
     for mod in modules:
-        for fqn in mod.imports.values():
-            top = fqn.split(".")[0]
-            if top:
-                packages.add(top)
-        packages.update(_dynamic_import_targets(mod))
+        for node in ast.walk(mod.tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    packages.add(alias.name.split(".")[0])
+            elif isinstance(node, ast.ImportFrom):
+                if node.module and node.level == 0:
+                    packages.add(node.module.split(".")[0])
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "__import__"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                packages.add(node.args[0].value.split(".")[0])
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "import_module"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                packages.add(node.args[0].value.split(".")[0])
     return packages
 
 
-def _traverse(graph: nx.DiGraph, entry: str, target: str, max_depth: int) -> TraversalOutcome:
-    key = (entry, target, max_depth)
+def _traverse(
+    graph: nx.DiGraph, entry_point: str, symbol: str, max_depth: int
+) -> TraversalOutcome:
+    """Bounded BFS memoized by ``(entry_point, symbol, max_depth)``."""
+    key = (entry_point, symbol, max_depth)
     cached = _traversal_cache.get(key)
     if cached is not None:
         return cached
-    outcome = _traverse_uncached(graph, entry, target, max_depth)
+
+    outcome = _traverse_uncached(graph, entry_point, symbol, max_depth)
     _traversal_cache[key] = outcome
     return outcome
 
 
 def _traverse_uncached(
-    graph: nx.DiGraph, entry: str, target: str, max_depth: int
+    graph: nx.DiGraph, entry_point: str, symbol: str, max_depth: int
 ) -> TraversalOutcome:
-    """Iterative depth-limited BFS from ``entry`` toward ``target``.
-
-    Returns the shortest path when found, plus whether a dynamic/unresolved
-    edge was crossed anywhere in the reachable frontier and whether the depth
-    bound cut the search short.
-    """
-    if entry not in graph:
+    if entry_point not in graph:
         return TraversalOutcome("NOT_REACHABLE", [], False, False)
-    if entry == target:
-        return TraversalOutcome("REACHABLE", [[entry]], False, False)
 
-    queue: deque[tuple[str, list[str], int]] = deque([(entry, [entry], 0)])
-    visited: set[str] = {entry}
+    queue: deque[tuple[str, list[str], int]] = deque([(entry_point, [entry_point], 0)])
+    visited: set[str] = {entry_point}
+    found_paths: list[list[str]] = []
     encountered_dynamic = False
     depth_exceeded = False
 
     while queue:
-        node, path, depth = queue.popleft()
-        if depth > max_depth:
-            depth_exceeded = True
-            continue
-        for successor in sorted(graph.successors(node)):
-            edge = graph.get_edge_data(node, successor) or {}
-            if edge.get("edge_type") == "DYNAMIC" or successor in (
-                SENTINEL_DYNAMIC,
-                SENTINEL_UNRESOLVED,
-            ):
-                encountered_dynamic = True
-            if successor == target:
-                if depth + 1 <= max_depth:
-                    return TraversalOutcome(
-                        "REACHABLE", [path + [successor]], encountered_dynamic, depth_exceeded
-                    )
-                depth_exceeded = True
-                continue
-            if successor in visited:
-                continue
-            visited.add(successor)
-            if depth + 1 > max_depth:
-                depth_exceeded = True
-            queue.append((successor, path + [successor], depth + 1))
+        current, path, depth = queue.popleft()
 
-    status: ReachabilityStatus = "POTENTIALLY_REACHABLE" if encountered_dynamic else "NOT_REACHABLE"
-    return TraversalOutcome(status, [], encountered_dynamic, depth_exceeded)
+        if current == symbol:
+            found_paths.append(path)
+            continue
+
+        if depth >= max_depth:
+            if graph.out_degree(current) > 0:
+                depth_exceeded = True
+            continue
+
+        for _, successor, edge_data in graph.out_edges(current, data=True):
+            if successor == SENTINEL_DYNAMIC or edge_data.get("edge_type") == "DYNAMIC":
+                encountered_dynamic = True
+                continue
+
+            if successor == SENTINEL_UNRESOLVED:
+                continue
+
+            if successor == symbol:
+                found_paths.append(path + [successor])
+                continue
+
+            if successor not in visited:
+                visited.add(successor)
+                queue.append((successor, path + [successor], depth + 1))
+
+    status: ReachabilityStatus
+    if found_paths:
+        status = "REACHABLE"
+    elif encountered_dynamic:
+        status = "POTENTIALLY_REACHABLE"
+    else:
+        status = "NOT_REACHABLE"
+
+    return TraversalOutcome(status, found_paths, encountered_dynamic, depth_exceeded)
 
 
 def _package_imported(
@@ -155,9 +186,6 @@ def _package_imported(
     application_imports: set[str] | None,
     package_import_names: dict[str, set[str]] | None,
 ) -> bool:
-    # PEP 503: "vuln-lib" (OSV/manifest) and "vuln_lib" (import/module) are the
-    # same distribution. Compare normalized, or packages with underscores
-    # silently read as not imported -> false NOT_REACHABLE (R2 violation).
     norm_package = normalize_name(package)
     symbol_top = symbol.split(".", 1)[0]
     candidates = {norm_package}
@@ -180,13 +208,6 @@ def _package_imported(
 
 
 def _unresolved_imports(graph: nx.DiGraph) -> bool:
-    """Conservative proxy: unresolved names exist anywhere in the graph.
-
-    The ``<UNRESOLVED>`` sentinel records call sites whose target could not be
-    resolved. Their presence means we cannot rule out an unresolved import, so
-    the classifier must not emit ``NOT_REACHABLE`` for packages that merely
-    appear unimported.
-    """
     return SENTINEL_UNRESOLVED in graph and graph.in_degree(SENTINEL_UNRESOLVED) > 0
 
 
@@ -217,11 +238,11 @@ def analyze_reachability(
     max_depth: int = 5,
     application_imports: set[str] | None = None,
     package_import_names: dict[str, set[str]] | None = None,
-) -> dict[tuple[str, str, str], ReachabilityResult]:
+) -> ReachabilityResults:
     """Classify reachability for every affected symbol of every vulnerability.
 
-    Results are keyed by ``(osv_id, package_name, symbol)`` so one advisory
-    affecting multiple packages cannot overwrite a wildcard finding.
+    Results are keyed by ``(osv_id, package_name, symbol)`` and also indexable
+    by ``(osv_id, symbol)``.
     """
     if max_depth < 0 or max_depth > MAX_DEPTH:
         raise ConfigError(f"max_depth must be in [0, {MAX_DEPTH}], got {max_depth}")
@@ -229,7 +250,7 @@ def analyze_reachability(
     clear_cache()
 
     classifier = ReachabilityClassifier()
-    results: dict[tuple[str, str, str], ReachabilityResult] = {}
+    results = ReachabilityResults()
     for vuln in vulnerabilities:
         for symbol in vuln.affected_symbols:
             results[(vuln.osv_id, vuln.package_name, symbol)] = _analyze_symbol(

@@ -138,3 +138,5 @@ uv run pytest tests/e2e -q
 - [x] `--help` documents every option (verified `uv run python -m pyreach.cli --help`).
 - [x] E2E tests green (`tests/e2e/test_cli_invocations.py`, 8 passed).
 - [x] Pipeline steps unit-tested (`tests/unit/test_cli.py`, 29 passed).
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

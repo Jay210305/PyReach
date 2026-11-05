@@ -22,6 +22,7 @@ import networkx as nx
 from pyreach import __version__
 from pyreach.ast.builder import ASTBuilder, ModuleAST
 from pyreach.ast.resolver import ModuleIndex
+from pyreach.ast.symbols import SymbolTableBuilder
 from pyreach.callgraph.engine import CallGraphEngine
 from pyreach.config import MAX_SCAN_DEPTH, resolve_config
 from pyreach.db.connection import get_db_connection
@@ -168,6 +169,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+parser = build_parser
+
+
 def build_sync_parser() -> argparse.ArgumentParser:
     """Build the offline-database refresh command parser."""
     parser = argparse.ArgumentParser(prog="pyreach sync-osv")
@@ -263,10 +267,66 @@ def load_vulnerabilities(
     return vulnerabilities, versions
 
 
-def discover_modules(project: Path, excludes: list[str]) -> list[ModuleAST]:
+def discover_modules(project: Path, excludes: list[str]) -> tuple[list[ModuleAST], list[str]]:
     """Discover and parse application sources (skips unreadable files with warnings)."""
     loader = SourceLoader(project, ignore_patterns=excludes)
-    return ASTBuilder(module_root=project).build_all(loader.discover())
+    builder = ASTBuilder(module_root=project)
+    modules: list[ModuleAST] = []
+    diagnostics: list[str] = []
+    for sf in loader.discover():
+        try:
+            m = builder.build_file(sf.path)
+            if m is not None:
+                modules.append(m)
+            else:
+                diagnostics.append(f"Failed to parse source: {sf.path}")
+        except Exception as exc:
+            diagnostics.append(f"Failed to parse {sf.path}: {exc}")
+    return modules, diagnostics
+
+
+def _expand_transitive_dependencies(
+    dependencies: list[Dependency], search_paths: list[Path]
+) -> list[Dependency]:
+    import importlib.metadata
+
+    from packaging.requirements import InvalidRequirement, Requirement
+
+    distributions = {
+        normalize_name(d.metadata["Name"]): d
+        for d in importlib.metadata.distributions(path=[str(p) for p in search_paths])
+        if "Name" in d.metadata and d.metadata["Name"]
+    }
+    seen: dict[str, Dependency] = {}
+    queue = list(dependencies)
+    while queue:
+        dep = queue.pop(0)
+        norm = normalize_name(dep.name)
+        if norm in seen:
+            continue
+        distribution = distributions.get(norm)
+        version = distribution.version if distribution else dep.version
+        dep_obj = Dependency(dep.name, version, dep.source, dep.extra, dep.marker)
+        seen[norm] = dep_obj
+        if distribution:
+            for raw in distribution.requires or []:
+                try:
+                    requirement = Requirement(raw)
+                    if requirement.marker and not requirement.marker.evaluate():
+                        continue
+                    req_name = normalize_name(requirement.name)
+                    if req_name not in seen:
+                        resolved = distributions.get(req_name)
+                        queue.append(
+                            Dependency(
+                                requirement.name,
+                                resolved.version if resolved else "unknown",
+                                dep.source,
+                            )
+                        )
+                except InvalidRequirement:
+                    continue
+    return list(seen.values())
 
 
 def _symbol_module_file(symbol: str, pkg: InstalledPackage) -> Path | None:
@@ -337,7 +397,10 @@ def combine_modules(app_modules: list[ModuleAST], lib_modules: list[ModuleAST]) 
 
 def build_call_graph(modules: list[ModuleAST]) -> nx.DiGraph:
     """Build the NetworkX DiGraph from parsed modules."""
-    return CallGraphEngine(ModuleIndex(modules)).build(modules)
+    index = ModuleIndex(modules)
+    for mod in modules:
+        SymbolTableBuilder(mod, index.get).build()
+    return CallGraphEngine(index).build(modules)
 
 
 def resolve_entry_points_cli(
@@ -447,6 +510,7 @@ def build_json_document(
     results: dict[tuple[str, str, str], ReachabilityResult],
     graph: nx.DiGraph,
     versions: dict[str, str],
+    diagnostics: list[str] | None = None,
 ) -> dict[str, object]:
     """Render the non-SARIF machine-readable format (spec §2.4)."""
     counts = _count_by_status(list(results.values()))
@@ -458,9 +522,13 @@ def build_json_document(
             {
                 "vulnerability": {
                     "osvId": vuln.osv_id,
+                    "osv_id": vuln.osv_id,
                     "cveId": vuln.cve_id,
+                    "cve_id": vuln.cve_id,
                     "packageName": vuln.package_name,
+                    "package_name": vuln.package_name,
                     "installedVersion": versions.get(normalize_name(vuln.package_name), ""),
+                    "installed_version": versions.get(normalize_name(vuln.package_name), ""),
                     "severity": vuln.severity_level,
                 },
                 "status": result.status,
@@ -468,7 +536,7 @@ def build_json_document(
                 "location": ({"file": file_path, "line": line} if file_path is not None else None),
             }
         )
-    return {
+    doc: dict[str, object] = {
         "tool": "PyReach",
         "version": _tool_version(),
         "project": str(project),
@@ -480,6 +548,9 @@ def build_json_document(
         },
         "results": items,
     }
+    if diagnostics is not None:
+        doc["diagnostics"] = list(diagnostics)
+    return doc
 
 
 def emit_output(
@@ -489,6 +560,7 @@ def emit_output(
     graph: nx.DiGraph,
     versions: dict[str, str],
     entries: list[str] | None = None,
+    diagnostics: list[str] | None = None,
 ) -> Path | None:
     """Serialize results per --format; returns the written file, if any."""
     if args.format == "sarif":
@@ -496,15 +568,24 @@ def emit_output(
         builder = SarifBuilder(_tool_version(), project, graph=graph, installed_versions=versions)
         for (_osv_id, _package, symbol), result in results.items():
             builder.add_result(result, include_not_reachable=args.include_all, symbol=symbol)
+        doc = builder.build()
+        if diagnostics:
+            runs = doc.get("runs")
+            if isinstance(runs, list) and runs:
+                first_run = runs[0]
+                if isinstance(first_run, dict):
+                    props = first_run.setdefault("properties", {})
+                    if isinstance(props, dict):
+                        props["diagnostics"] = list(diagnostics)
         builder.write(out)
         return out
     if args.format == "json":
         out = Path(args.output) if args.output else Path(DEFAULT_JSON_OUTPUT)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(
-            json.dumps(build_json_document(project, results, graph, versions), indent=2) + "\n",
-            encoding="utf-8",
-        )
+        payload = json.dumps(
+            build_json_document(project, results, graph, versions, diagnostics), indent=2
+        ) + "\n"
+        out.write_text(payload, encoding="utf-8")
         return out
     report = format_text(
         project,
@@ -556,8 +637,10 @@ def run_scan(args: argparse.Namespace) -> ExitCode:
     else:
         manifest_arg = None
 
+    search_paths = detect_site_packages(project) or []
     _progress(1, 5, "Parsing manifest", quiet=quiet)
     dependencies = parse_manifest(manifest_arg, project)
+    dependencies = _expand_transitive_dependencies(dependencies, search_paths)
 
     _progress(2, 5, "Loading advisories", quiet=quiet)
     vulnerabilities, versions = load_vulnerabilities(cfg.osv_db, dependencies)
@@ -567,8 +650,7 @@ def run_scan(args: argparse.Namespace) -> ExitCode:
         return ExitCode.SUCCESS
 
     _progress(3, 5, "Building call graph", quiet=quiet)
-    app_modules = discover_modules(project, list(cfg.ignore_paths))
-    search_paths = detect_site_packages(project)
+    app_modules, diagnostics = discover_modules(project, list(cfg.ignore_paths))
     resolver = PackageResolver(search_paths=search_paths or None)
     lib_modules = load_library_modules(vulnerabilities, resolver)
     import_names: dict[str, set[str]] = {}
@@ -577,7 +659,12 @@ def run_scan(args: argparse.Namespace) -> ExitCode:
         if pkg is not None:
             import_names[pkg.name] = set(pkg.top_level)
     graph = build_call_graph(combine_modules(app_modules, lib_modules))
-    entries = resolve_entry_points_cli(app_modules, list(cfg.entry_points), graph)
+    if cfg.entry_points and any(entry.replace(":", ".") not in graph for entry in cfg.entry_points):
+        raise ConfigError("Entry point not found in parsed sources; verify -e module:function")
+    module_entries = [
+        f"{m.module_fqn}.__main__" for m in app_modules if f"{m.module_fqn}.__main__" in graph
+    ]
+    entries = resolve_entry_points_cli(app_modules, [*cfg.entry_points, *module_entries], graph)
 
     _progress(4, 5, "Analyzing reachability", quiet=quiet)
     results = analyze_reachability(
@@ -588,9 +675,14 @@ def run_scan(args: argparse.Namespace) -> ExitCode:
         application_imports=imported_packages(app_modules),
         package_import_names=import_names,
     )
+    if diagnostics:
+        for result in results.values():
+            if result.status == "NOT_REACHABLE":
+                result.status = "POTENTIALLY_REACHABLE"
+                result.reasoning = "Partial source analysis; reachability cannot be ruled out."
 
     _progress(5, 5, "Writing output", quiet=quiet)
-    written = emit_output(args, project, results, graph, versions, entries)
+    written = emit_output(args, project, results, graph, versions, entries, diagnostics)
     code = compute_exit_code(list(results.values()), args)
     if not quiet and args.format != "text":
         counts = _count_by_status(list(results.values()))

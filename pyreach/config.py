@@ -191,9 +191,13 @@ def _overlay(base: PyReachConfig, over: PyReachConfig, fields: set[str]) -> PyRe
     if "version" in fields:
         base.version = over.version
     if "entry_points" in fields:
-        base.entry_points = list(over.entry_points)
+        for ep in over.entry_points:
+            if ep not in base.entry_points:
+                base.entry_points.append(ep)
     if "ignore_paths" in fields:
-        base.ignore_paths = list(over.ignore_paths)
+        for ip in over.ignore_paths:
+            if ip not in base.ignore_paths:
+                base.ignore_paths.append(ip)
     if "max_depth" in fields:
         base.max_depth = over.max_depth
     if "manifest" in fields:
@@ -227,19 +231,24 @@ def resolve_config(
         project_cfg, project_fields = _parse_file(project_file)
         merged = _overlay(merged, project_cfg, project_fields)
 
-    if cli_args.manifest is not None:
-        merged.manifest = cli_args.manifest
-    if cli_args.db_path is not None:
-        merged.osv_db = cli_args.db_path
-    if cli_args.max_depth is not None:
-        merged.max_depth = cli_args.max_depth
-    for entry in cli_args.entry_point or []:
+    manifest = getattr(cli_args, "manifest", None)
+    if manifest is not None:
+        merged.manifest = manifest
+    db_path = getattr(cli_args, "db_path", None)
+    if db_path is not None:
+        merged.osv_db = db_path
+    max_depth = getattr(cli_args, "max_depth", None)
+    if max_depth is not None:
+        merged.max_depth = max_depth
+    for entry in getattr(cli_args, "entry_point", None) or []:
         if entry not in merged.entry_points:
             merged.entry_points.append(entry)
-    for pattern in cli_args.exclude or []:
+    for pattern in getattr(cli_args, "exclude", None) or []:
         if pattern not in merged.ignore_paths:
             merged.ignore_paths.append(pattern)
-    if cli_args.include_potentially:
+    if getattr(cli_args, "include_potentially", False):
         merged.thresholds.fail_on_potentially = True
+    if getattr(cli_args, "no_fail", False):
+        merged.thresholds = Thresholds(fail_on_reachable=False, fail_on_potentially=False)
     logger.debug("Effective config for %s: %r", project_root, merged)
     return merged

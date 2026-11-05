@@ -1,0 +1,17 @@
+# Optional: supported GitLab Ultimate version with SARIF ingestion enabled.
+# Producing job succeeds for ingestion; a separate job enforces the scan exit status.
+pyreach-report:
+  stage: security
+  script:
+    - scan_exit=0; pyreach . -d "$PYREACH_DB_PATH" -o "$CI_PROJECT_DIR/pyreach-results.sarif" --include-potentially || scan_exit=$?
+    - test "$scan_exit" -le 1 || exit "$scan_exit"
+    - printf '%s\n' "$scan_exit" > pyreach-exit.txt
+  artifacts:
+    paths: [pyreach-results.sarif, pyreach-exit.txt]
+    reports:
+      sarif: pyreach-results.sarif
+pyreach-gate:
+  stage: gate
+  needs: [pyreach-report]
+  script:
+    - test "$(cat pyreach-exit.txt)" -eq 0

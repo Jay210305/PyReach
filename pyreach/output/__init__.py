@@ -1,4 +1,4 @@
-"""Output serializers for PyReach (Sprint 4)."""
+"""Output serializers for PyReach."""
 
 from pyreach.output.sarif import (
     RULE_CATALOG,
@@ -9,7 +9,9 @@ from pyreach.output.sarif import (
     SarifRun,
     load_sarif_schema,
     validate_sarif_document,
+    write_report,
 )
+from pyreach.output.summary import summarize, text_summary
 
 __all__ = [
     "RULE_CATALOG",
@@ -20,4 +22,7 @@ __all__ = [
     "SarifRun",
     "load_sarif_schema",
     "validate_sarif_document",
+    "write_report",
+    "summarize",
+    "text_summary",
 ]

@@ -22,8 +22,8 @@ class OSVError(PyReachError):
 
 
 class AnalysisError(PyReachError):
-    """Raised on AST or call graph analysis failure (reserved for later sprints)."""
+    """Raised on AST or call graph analysis failure."""
 
 
 class OutputError(PyReachError):
-    """Raised on SARIF serialization or report write failure (reserved for later sprints)."""
+    """Raised on SARIF serialization or report write failure."""

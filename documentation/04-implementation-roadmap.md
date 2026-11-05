@@ -37,7 +37,7 @@ es negociable**).
 |-----------|-------|
 | Última actualización | 2026-09-29 |
 | Fase activa | Fase 2 — Desarrollo (semanas 5-12) |
-| Sprint activo | **Sprint 3 — Grafo de llamadas y alcanzabilidad (semanas 9-10), pendiente de inicio** |
+| Sprint activo | **Entrega técnica de Sprint 4 verificada; validación externa S4-T7 pendiente** |
 | Tareas completadas | 15 / 31 (Sprint 1: 8/8 ✅, Sprint 2: 7/7 ✅) |
 | Avance del Sprint 2 | 7 / 7 tareas (100 %) — `S2-T1` ✅, `S2-T2` ✅, `S2-T3` ✅, `S2-T4` ✅, `S2-T5` ✅, `S2-T6` ✅, `S2-T7` ✅ |
 | Estado de la build | `uv run pytest` → **138+ tests aprobados** (S2 corpus real-world), cobertura global ≥85 % (ast: 96 %, loaders: 88 %) |
@@ -421,4 +421,12 @@ Anotar aquí cada ítem al resolverlo, y reflejarlo también en la bitácora.
 
 *Versión del documento: 1.3*
 *Fecha: 2026-09-29*
-*Estado: En ejecución — Sprint 3 pendiente (Sprint 1 y 2 completados, M1 y M2 cerrados)*
+*Estado al 2026-11-04: Sprint 3 y entrega técnica de Sprint 4 implementados. S4-T7 corporativo y aceptación humana pendientes.*
+
+## Actualización de entrega — 04/11/2026
+
+DT-01: empaquetado y scripts habilitados, wheel/sdist construidos. DT-02/DT-03:
+formato y estados operativos actualizados. DT-04: AnalysisError se usa en el
+límite de construcción del grafo y OutputError en escritura/serialización.
+El estado verificable por tarea y las restricciones externas se conservan en
+`delivery-status.md`; no se cierran despliegues corporativos sin sus registros.

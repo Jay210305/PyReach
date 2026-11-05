@@ -141,7 +141,7 @@ class ASTBuilder:
             )
             self._cache[cache_key] = mod_ast
             return mod_ast
-        except (ParseError, OSError) as exc:
+        except (ParseError, OSError, UnicodeError) as exc:
             logger.warning("Failed to parse source file %s: %s", path, exc)
             return None
 

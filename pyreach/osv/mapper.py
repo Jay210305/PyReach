@@ -9,6 +9,7 @@ half lives in :mod:`pyreach.parsers.osv_json`; the persistence half lives in
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
 
@@ -102,13 +103,21 @@ class VulnerabilityMapper:
         :func:`is_version_affected`.
         """
         norm_pkg = normalize_name(package_name)
-        rows = self._conn.execute(
+        has_index = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = 'advisory_packages'"
+        ).fetchone()
+        query = (
             "SELECT DISTINCT a.* FROM advisories AS a "
             "LEFT JOIN affected_symbols AS s ON s.advisory_id = a.id "
-            "WHERE s.package_name = ? OR "
-            "(s.package_name IS NULL AND a.package_name = ?);",
-            (norm_pkg, norm_pkg),
-        ).fetchall()
+            "WHERE a.package_name = ? OR s.package_name = ?"
+        )
+        params = [norm_pkg, norm_pkg]
+        if has_index:
+            query += (
+                " OR a.id IN (SELECT advisory_id FROM advisory_packages WHERE package_name = ?)"
+            )
+            params.append(norm_pkg)
+        rows = self._conn.execute(query, params).fetchall()
 
         matching: list[Vulnerability] = []
         for row in rows:
@@ -121,6 +130,24 @@ class VulnerabilityMapper:
                 (advisory_id, norm_pkg, row["package_name"], norm_pkg),
             ).fetchall()
 
+            raw_json = row["raw_json"]
+            if raw_json:
+                from pyreach.parsers.osv_json import extract_affected
+
+                try:
+                    record = json.loads(raw_json)
+                    if isinstance(record, dict) and isinstance(record.get("affected"), list):
+                        sym_rows = [
+                            {
+                                "symbol_fqn": item.symbol_fqn,
+                                "version_introduced": item.version_introduced,
+                                "version_fixed": item.version_fixed,
+                                "version_fixed_inclusive": item.version_fixed_inclusive,
+                            }
+                            for item in extract_affected(record, norm_pkg)
+                        ]
+                except (ValueError, TypeError):
+                    pass
             is_affected = not sym_rows
             symbols: list[str] = []
             intro_val: str | None = None
@@ -145,7 +172,7 @@ class VulnerabilityMapper:
                     Vulnerability(
                         osv_id=row["osv_id"],
                         cve_id=row["cve_id"],
-                        package_name=row["package_name"],
+                        package_name=norm_pkg,
                         severity_score=row["severity_score"],
                         severity_level=row["severity_level"],
                         summary=row["summary"] or "",

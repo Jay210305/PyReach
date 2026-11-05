@@ -17,6 +17,7 @@ from typing import Any, TextIO
 from pyreach.db.connection import get_db_connection, initialize_database
 from pyreach.db.repositories import AdvisoryRepository
 from pyreach.exceptions import OSVError
+from pyreach.parsers.manifest import normalize_name
 from pyreach.parsers.osv_json import extract_affected, is_pypi_record, parse_osv_record
 
 _NETWORK_SCHEMES = ("http://", "https://", "ftp://")
@@ -38,11 +39,10 @@ class ImportStats:
 
 
 def iter_osv_records(path: Path) -> Iterator[dict[str, Any] | None]:
-    """Yield record dicts from a JSONL file or a top-level JSON array file.
+    """Yield record dicts from a JSONL file, a top-level JSON array file, or zip.
 
     Malformed records are yielded as ``None`` so the caller can count them
-    without aborting the stream. JSON arrays are loaded whole (they are small
-    compared to the JSONL bulk dumps).
+    without aborting the stream. JSON arrays are loaded whole.
     """
     if path.suffix.lower() == ".zip":
         try:
@@ -137,7 +137,7 @@ class OSVImporter:
         self.db_path = Path(db_path)
         self.incremental = incremental
 
-    def import_file(self, path: str | Path) -> ImportStats:
+    def import_file(self, path: str | Path, *, update_sync: bool = True) -> ImportStats:
         """Stream an OSV JSONL (or JSON array) file and insert/update advisories."""
         file_path = Path(path)
         if not file_path.is_file():
@@ -149,7 +149,6 @@ class OSVImporter:
         initialize_database(self.db_path)
         with get_db_connection(self.db_path) as conn:
             repo = AdvisoryRepository(conn)
-            last_sync = _read_last_sync(conn) if self.incremental else None
             sync_start = _utc_timestamp() if self.incremental else None
 
             for record in iter_osv_records(file_path):
@@ -159,11 +158,16 @@ class OSVImporter:
                     continue
 
                 modified = record.get("modified")
+                existing = conn.execute(
+                    "SELECT modified_date FROM advisories WHERE osv_id = ?",
+                    (record.get("id") if isinstance(record.get("id"), str) else "",),
+                ).fetchone()
                 if (
                     self.incremental
-                    and last_sync
+                    and existing
+                    and isinstance(existing[0], str)
                     and isinstance(modified, str)
-                    and modified <= last_sync
+                    and modified <= existing[0]
                 ):
                     stats.skipped_up_to_date += 1
                     continue
@@ -189,13 +193,22 @@ class OSVImporter:
                 affected_items = extract_affected(record)
                 repo.replace_symbols(advisory_id, affected_items)
 
+                conn.execute("DELETE FROM advisory_packages WHERE advisory_id = ?", (advisory_id,))
+                for block in record.get("affected", []):
+                    package = block.get("package", {}) if isinstance(block, dict) else {}
+                    if package.get("ecosystem") == "PyPI" and package.get("name"):
+                        conn.execute(
+                            "INSERT OR IGNORE INTO advisory_packages VALUES (?, ?)",
+                            (advisory_id, normalize_name(package["name"])),
+                        )
+
                 stats.imported += 1
                 stats.symbols_imported += len(affected_items)
 
                 if stats.imported % _BATCH_SIZE == 0:
                     conn.commit()
 
-            if self.incremental and sync_start is not None:
+            if self.incremental and update_sync and sync_start is not None:
                 _write_last_sync(conn, sync_start)
 
         stats.elapsed_seconds = time.monotonic() - start_time
@@ -232,19 +245,26 @@ def sync_osv(
     if source_path.is_dir():
         aggregated = ImportStats()
         start = time.monotonic()
+        initialize_database(db_path)
+        sync_start = _utc_timestamp()
         files = sorted(
             f
             for f in source_path.iterdir()
             if f.is_file() and f.suffix.lower() in {".jsonl", ".json", ".zip"}
         )
+        if not files:
+            raise OSVError(f"No OSV JSON/JSONL files in {source_path}")
         for f in files:
-            file_stats = importer.import_file(f)
+            file_stats = importer.import_file(f, update_sync=False)
             aggregated.total += file_stats.total
             aggregated.imported += file_stats.imported
             aggregated.skipped_ecosystem += file_stats.skipped_ecosystem
             aggregated.skipped_malformed += file_stats.skipped_malformed
             aggregated.skipped_up_to_date += file_stats.skipped_up_to_date
             aggregated.symbols_imported += file_stats.symbols_imported
+        if incremental:
+            with get_db_connection(db_path) as conn:
+                _write_last_sync(conn, sync_start)
         aggregated.elapsed_seconds = time.monotonic() - start
         return aggregated
 

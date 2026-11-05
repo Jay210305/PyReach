@@ -1,0 +1,10 @@
+{
+  "network": "none",
+  "uid": 10001,
+  "database": "read-only consistent snapshot, journal DELETE",
+  "fixture": "linear_reachable",
+  "expected_exit": 1,
+  "obtained_exit": 1,
+  "sarif_schema_valid": true,
+  "corporate_deployment": false
+}

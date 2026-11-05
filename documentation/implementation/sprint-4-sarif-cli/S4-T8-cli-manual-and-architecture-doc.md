@@ -104,3 +104,5 @@ Notes (2026-10-14):
 - No confidential names; placeholders only. No screenshots (text output).
 - Exclude semantics documented as verified: excluded dirs lose file/line detail but
   placeholder nodes keep verdicts conservative (no false negatives).
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.

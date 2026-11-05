@@ -61,7 +61,17 @@ def initialize_database(db_path: str | Path) -> None:
             "CREATE INDEX IF NOT EXISTS idx_affected_symbols_package "
             "ON affected_symbols(package_name);"
         )
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name = 'reachability_results'"
+        ).fetchone()
+        if row and "BETWEEN 1 AND 5" in row[0]:
+            migration = (
+                resources.files("pyreach.db")
+                .joinpath("migrations/002_depth_domain.sql")
+                .read_text(encoding="utf-8")
+            )
+            conn.executescript(migration)
         conn.execute("INSERT OR IGNORE INTO schema_version (version) VALUES (2);")
         version = get_schema_version(conn)
-        if version < 2:
+        if version < 1:
             raise DatabaseError("Schema initialization failed to record schema_version.")

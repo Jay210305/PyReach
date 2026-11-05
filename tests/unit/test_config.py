@@ -265,3 +265,59 @@ def test_partial_project_config_keeps_user_values(tmp_path: Path) -> None:
     assert cfg.max_depth == 6
     assert cfg.manifest == "global.txt"
     assert cfg.entry_points == ["a.b"]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "[bad]",
+        "pyreach: []",
+        "pyreach:\n  nope: 1",
+        "pyreach:\n  max_depth: true",
+        "pyreach:\n  max_depth: 8",
+        "pyreach:\n  entry_points: [1]",
+        "pyreach:\n  thresholds:\n    fail_on_reachable: yesplease",
+        "pyreach:\n  manifest: 2",
+        "pyreach:\n  version: 3",
+        "pyreach:\n  thresholds:\n    bad: true",
+    ],
+)
+def test_rejects_invalid_config(tmp_path: Path, body: str) -> None:
+    (tmp_path / ".pyreach.yml").write_text(body, encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_config(tmp_path)
+
+
+def test_precedence_and_additive_lists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    (home / ".pyreach").mkdir(exist_ok=True)
+    (home / ".pyreach/config.yml").write_text(
+        "pyreach:\n  max_depth: 2\n  entry_points: [a]\n  ignore_paths: [tests/]\n"
+        "  thresholds:\n    fail_on_reachable: false\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(Path, "home", lambda: home)
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".pyreach.yaml").write_text(
+        "pyreach:\n  max_depth: 3\n  entry_points: [b]\n"
+        "  thresholds:\n    fail_on_potentially: true\n",
+        encoding="utf-8",
+    )
+    c = resolve_config(
+        argparse.Namespace(max_depth=5, entry_point=["c"], exclude=["docs/"]), project, home=home
+    )
+    assert c.max_depth == 5 and c.entry_points == ["a", "b", "c"]
+    assert c.ignore_paths == ["tests/", "docs/"]
+    assert c.thresholds.fail_on_potentially and not c.thresholds.fail_on_reachable
+    assert not resolve_config(
+        argparse.Namespace(no_fail=True), project, home=home
+    ).thresholds.fail_on_potentially
+
+
+def test_defaults_and_empty_config(tmp_path: Path) -> None:
+    assert load_config(tmp_path) is None
+    (tmp_path / ".pyreach.yml").write_text("", encoding="utf-8")
+    assert load_config(tmp_path).max_depth == 5
+    assert resolve_config(argparse.Namespace(), tmp_path).max_depth == 5

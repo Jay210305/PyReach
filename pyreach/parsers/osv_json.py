@@ -204,7 +204,9 @@ def _extract_ranges(item: dict[str, Any]) -> list[tuple[str | None, str | None, 
     return ranges
 
 
-def extract_affected(record: dict[str, Any]) -> list[AffectedSymbol]:
+def extract_affected(
+    record: dict[str, Any], package_name: str | None = None
+) -> list[AffectedSymbol]:
     """Extract affected symbols and their version ranges from PyPI blocks.
 
     One :class:`AffectedSymbol` is emitted per (symbol, range) so multi-range
@@ -222,12 +224,14 @@ def extract_affected(record: dict[str, Any]) -> list[AffectedSymbol]:
         if not isinstance(package, dict) or package.get("ecosystem") != "PyPI":
             continue
 
-        package_name = normalize_name(str(package.get("name", "")))
-        if not package_name:
+        pkg = normalize_name(str(package.get("name", "")))
+        if not pkg:
+            continue
+        if package_name is not None and pkg != normalize_name(package_name):
             continue
         for symbol in _extract_symbols(item):
             for introduced, upper, inclusive in _extract_ranges(item):
-                results.append(AffectedSymbol(symbol, introduced, upper, inclusive, package_name))
+                results.append(AffectedSymbol(symbol, introduced, upper, inclusive, pkg))
 
     return results
 

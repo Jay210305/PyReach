@@ -143,3 +143,5 @@ Notes (2026-10-08):
 - Incidental R2 fix: `analyzer._package_imported` now compares PEP 503-normalized names
   (`vuln-lib` vs `import vuln_lib` previously read as not imported -> false NOT_REACHABLE),
   with regression tests in `tests/unit/reachability/test_analyzer.py`.
+
+Entrega técnica implementada al 2026-11-04. Evidencia y límites externos: `documentation/delivery-status.md`.
