@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.8.31)  3 NOV 2026 16:37
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.8.31)  16 NOV 2026 16:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -174,8 +174,6 @@ Language: spanish.ldf 2021/05/27 v5.0q Spanish support from the babel system
 \es@quottoks=\toks20
 \es@quotdepth=\count293
 Package babel Info: Making " an active character on input line 570.
-Package babel Info: Making < an active character on input line 722.
-Package babel Info: Making > an active character on input line 722.
 ))
 LaTeX Encoding Info:    Redeclaring text command \guillemotleft (encoding OT1) 
 on input line 7.
@@ -717,31 +715,31 @@ ex.def
 File: l3backend-pdftex.def 2026-08-10 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count338
 ) (articulo_ieee.aux
-LaTeX Info: Redefining \. on input line 12.
-LaTeX Info: Redefining \% on input line 12.
+LaTeX Info: Redefining \. on input line 9.
+LaTeX Info: Redefining \% on input line 9.
 Package babel Info: 'spanish' activates 'spanish' shorthands.
-(babel)             Reported on input line 12.
+(babel)             Reported on input line 9.
 )
 \openout1 = `articulo_ieee.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 31.
+LaTeX Font Info:    ... okay on input line 31.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 31.
+LaTeX Font Info:    ... okay on input line 31.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 31.
+LaTeX Font Info:    ... okay on input line 31.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 31.
+LaTeX Font Info:    ... okay on input line 31.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 31.
+LaTeX Font Info:    ... okay on input line 31.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 31.
+LaTeX Font Info:    ... okay on input line 31.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 31.
+LaTeX Font Info:    ... okay on input line 31.
 
 -- Lines per column: 56 (exact).
-LaTeX Info: Redefining \. on input line 27.
-LaTeX Info: Redefining \% on input line 27.
+LaTeX Info: Redefining \. on input line 31.
+LaTeX Info: Redefining \% on input line 31.
 
 (C:\Users\jay21\AppData\Local\Programs\MiKTeX\tex/context/base/mkii\supp-pdf.mk
 ii
@@ -769,160 +767,277 @@ fg
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
 Package babel Info: Main language set to 'spanish'.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 38.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 42.
 
  (C:\Users\jay21\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 38.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 42.
 
 
 (C:\Users\jay21\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Calculating math sizes for size <11> on input line 38.
-LaTeX Font Info:    Trying to load font information for T1+pcr on input line 41
+LaTeX Font Info:    Calculating math sizes for size <11> on input line 42.
+LaTeX Font Info:    Trying to load font information for T1+pcr on input line 45
 .
 
 (C:\Users\jay21\AppData\Local\Programs\MiKTeX\tex/latex/psnfss\t1pcr.fd
 File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
 )
 LaTeX Font Info:    Font shape `T1/pcr/m/it' in size <9> not available
-(Font)              Font shape `T1/pcr/m/sl' tried instead on input line 55.
+(Font)              Font shape `T1/pcr/m/sl' tried instead on input line 59.
 
-** WARNING: \IEEEPARstart is locked out when in conference mode (line 62).
+Underfull \vbox (badness 1533) has occurred while \output is active []
+
+
+** WARNING: \IEEEPARstart is locked out when in conference mode (line 66).
 [1{C:/Users/jay21/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Users/ja
 y21/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}
 
 
 ] [2]
-Underfull \hbox (badness 5652) in paragraph at lines 107--108
-[]|\T1/ptm/b/n/9 Profundo in-ter-pro-ce-di-men-tal
+Overfull \hbox (1.47086pt too wide) in paragraph at lines 106--119
+ [][] 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 173--174
+Underfull \hbox (badness 10000) in paragraph at lines 177--178
 []\T1/ptm/b/n/10 Capa de En-tra-da (\T1/pcr/b/n/10 pyreach.parsers\T1/ptm/b/n/1
 0 ,
  []
 
 
-Underfull \hbox (badness 4569) in paragraph at lines 173--174
-\T1/pcr/b/n/10 pyreach.loaders\T1/ptm/b/n/10 ): \T1/ptm/m/n/10 In-ges-ta los ma
--ni-fies-tos de
+Underfull \hbox (badness 10000) in paragraph at lines 177--178
+\T1/pcr/b/n/10 pyreach.loaders\T1/ptm/b/n/10 ): \T1/ptm/m/n/10 Lee los ma-ni-fi
+es-tos de
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 173--174
-\T1/ptm/m/n/10 de-pen-den-cias de-cla-ra-das (\T1/pcr/m/n/10 requirements.txt\T
-1/ptm/m/n/10 ,
+Underfull \hbox (badness 2285) in paragraph at lines 177--178
+\T1/ptm/m/n/10 pa-que-tes (\T1/pcr/m/n/10 requirements.txt\T1/ptm/m/n/10 , \T1/
+pcr/m/n/10 Pipfile.lock\T1/ptm/m/n/10 )
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 173--174
-\T1/pcr/m/n/10 Pipfile.lock\T1/ptm/m/n/10 ) uti-li-zan-do la li-bre-ría es-tán-
-dar
+Underfull \hbox (badness 2409) in paragraph at lines 177--178
+\T1/ptm/m/n/10 apo-yán-do-se en \T1/pcr/m/n/10 packaging\T1/ptm/m/n/10 . El mó-
+du-lo \T1/pcr/m/n/10 source
  []
 
 
-Underfull \hbox (badness 4673) in paragraph at lines 175--176
+Underfull \hbox (badness 3209) in paragraph at lines 178--179
+[]\T1/ptm/b/n/10 Capa de Per-sis-ten-cia (\T1/pcr/b/n/10 pyreach.db\T1/ptm/b/n/
+10 ): \T1/ptm/m/n/10 Ad-mi-nis-
+ []
+
+
+Underfull \hbox (badness 4084) in paragraph at lines 178--179
+\T1/ptm/m/n/10 tra las con-sul-tas ha-cia la ba-se lo-cal SQ-Li-te 3
+ []
+
+
+Underfull \hbox (badness 4673) in paragraph at lines 179--180
 []\T1/ptm/b/n/10 Capa de Ló-gi-ca de Ne-go-cio (\T1/pcr/b/n/10 pyreach.ast\T1/p
 tm/b/n/10 ,
  []
 
-[3]
-Underfull \hbox (badness 1776) in paragraph at lines 235--236
-\T1/ptm/m/n/10 ba-jo el es-tán-dar PEP 503. Me-dian-te un ín-di-ce B-Tree
+
+Underfull \hbox (badness 10000) in paragraph at lines 239--240
+[]\T1/ptm/m/n/10 Los nom-bres de de-pen-den-cias se es-tan-da-ri-zan
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 235--236
+Underfull \hbox (badness 10000) in paragraph at lines 239--240
+\T1/ptm/m/n/10 con PEP 503. Gra-cias a un ín-di-ce B-Tree
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 239--240
+\T1/ptm/m/n/10 do-ble en \T1/pcr/m/n/10 vulnerabilities(package_name)
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 239--240
 \T1/ptm/m/n/10 y \T1/pcr/m/n/10 vulnerable_functions(vuln_id,
  []
 
 
-Underfull \hbox (badness 2165) in paragraph at lines 294--296
-[]\T1/ptm/m/n/10 Los pun-tos de en-tra-da $\OML/cmm/m/it/10 V[] \OMS/cmsy/m/n/1
-0 ^^Z \OML/cmm/m/it/10 V$ \T1/ptm/m/n/10 re-pre-sen-tan los
+Underfull \hbox (badness 6268) in paragraph at lines 239--240
+\T1/pcr/m/n/10 function_qname)\T1/ptm/m/n/10 , la con-sul-ta me-dia to-ma ape-n
+as
+ []
+
+[3]
+Underfull \hbox (badness 2846) in paragraph at lines 293--294
+\T1/ptm/m/n/10 Aquí $[] \OMS/cmsy/m/n/10 2 \OT1/cmr/m/n/10 ^^F[]$ \T1/ptm/m/n/1
+0 in-di-ca la ru-ta je-rár-qui-ca com-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 296--297
-[]\T1/ptm/b/n/10 Bloques prin-ci-pa-les: \T1/ptm/m/n/10 Blo-ques con-di-cio-na-
-les \T1/pcr/m/n/10 if
+Underfull \hbox (badness 3343) in paragraph at lines 293--294
+\T1/ptm/m/n/10 ple-ta (\T1/ptm/m/it/10 Fully Qua-li-fied Na-me\T1/ptm/m/n/10 ),
+ $[]$ apun-ta al ar-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 297--298
-[]\T1/ptm/b/n/10 Comandos CLI: \T1/ptm/m/n/10 Fun-cio-nes de-cla-ra-das en
+Underfull \hbox (badness 5331) in paragraph at lines 293--294
+\T1/ptm/m/n/10 chi-vo, $[]$ mar-ca la lí-nea de có-di-go y $\OML/cmm/m/it/10 ^^
+\ \OMS/cmsy/m/n/10 2
+ []
+
+
+Underfull \hbox (badness 3148) in paragraph at lines 293--294
+\OMS/cmsy/m/n/10 f[]\OML/cmm/m/it/10 ; []; []; []\OMS/cmsy/m/n/10 g$ \T1/ptm/m/
+n/10 eti-que-ta
+ []
+
+
+Underfull \hbox (badness 2027) in paragraph at lines 294--295
+[]$\OML/cmm/m/it/10 E \OMS/cmsy/m/n/10 ^^R \OML/cmm/m/it/10 V \OMS/cmsy/m/n/10 
+^^B \OML/cmm/m/it/10 V \OMS/cmsy/m/n/10 ^^B \OT1/cmr/m/n/10 
+ \OMS/cmsy/m/n/10 ^^B \OT1/cmr/m/n/10 [0\OML/cmm/m/it/10 ; \OT1/cmr/m/n/10 1]$ 
+\T1/ptm/m/n/10 agru-pa las co-ne-xio-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 304--305
+[] []\T1/ptm/m/n/10 Conjunto de mó-du-los ana-li-za-dos $\OMS/cmsy/m/n/10 M \OT
+1/cmr/m/n/10 =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 307--308
+[] []\T1/ptm/m/n/10 Insertar sen-ti-ne-las di-ná-mi-cos: $\OML/cmm/m/it/10 V \O
+MS/cmsy/m/n/10   \OML/cmm/m/it/10 V \OMS/cmsy/m/n/10 [
+ []
+
+
+Underfull \hbox (badness 2961) in paragraph at lines 343--344
+[]\T1/ptm/b/n/10 Pasada 1 (Ex-trac-ción de No-dos y Sím-bo-los):
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 343--344
+\T1/ptm/m/n/10 El com-po-nen-te \T1/pcr/m/n/10 NodeExtractor \T1/ptm/m/n/10 ins
+-pec-cio-na
+ []
+
+
+Underfull \hbox (badness 7796) in paragraph at lines 343--344
+\T1/ptm/m/n/10 las es-truc-tu-ras cla-ve del AST (\T1/pcr/m/n/10 FunctionDef\T1
+/ptm/m/n/10 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 343--344
+\T1/pcr/m/n/10 AsyncFunctionDef\T1/ptm/m/n/10 , \T1/pcr/m/n/10 ClassDef\T1/ptm/
+m/n/10 , ex-pre-sio-nes
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 343--344
+\T1/pcr/m/n/10 Lambda\T1/ptm/m/n/10 ). Ob-tie-ne los iden-ti-fi-ca-do-res ca-nó
+-ni-cos.
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 343--344
+\T1/ptm/m/n/10 Ano-ta de-co-ra-do-res ha-bi-tua-les (\T1/pcr/m/n/10 @staticmeth
+od\T1/ptm/m/n/10 ,
+ []
+
+
+Underfull \hbox (badness 2884) in paragraph at lines 343--344
+\T1/ptm/m/n/10 (\T1/pcr/m/n/10 __new__\T1/ptm/m/n/10 , \T1/pcr/m/n/10 __init__\
+T1/ptm/m/n/10 ) me-dian-te aris-tas es-tá-ti-cas
+ []
+
+
+Underfull \hbox (badness 1917) in paragraph at lines 344--345
+[]\T1/ptm/b/n/10 Pasada 2 (Re-so-lu-ción de He-ren-cia): \T1/ptm/m/n/10 Re-vi-s
+a las
+ []
+
+
+Underfull \hbox (badness 2529) in paragraph at lines 344--345
+\T1/ptm/m/n/10 tu-plas \T1/pcr/m/n/10 bases \T1/ptm/m/n/10 de ca-da cla-se de-c
+la-ra-da. Me-dian-te
+ []
+
+
+Underfull \hbox (badness 1622) in paragraph at lines 345--346
+\T1/pcr/m/n/10 **kwargs\T1/ptm/m/n/10 ), une el emi-sor con el no-do es-pe-cial
+
  []
 
 [4]
-Underfull \hbox (badness 10000) in paragraph at lines 327--327
-[] []\T1/ptm/b/n/10 if $[] \OT1/cmr/m/n/10 = []$ \T1/ptm/b/n/10 or $\OML/cmm/m/
-it/10 w \OT1/cmr/m/n/10 =
+Underfull \hbox (badness 1430) in paragraph at lines 349--351
+\T1/ptm/m/n/10 de la eje-cu-ción. Son las puer-tas de ac-ce-so. El pa-que-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 331--332
+Underfull \hbox (badness 1655) in paragraph at lines 352--353
+[]\T1/ptm/b/n/10 Comandos de ter-mi-nal: \T1/ptm/m/n/10 Fun-cio-nes re-gis-tra-
+das en
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 389--390
 [] []\T1/ptm/b/n/10 return  $\OT1/cmr/m/n/10 ([]\OML/cmm/m/it/10 ; [] \OT1/cmr/
 m/n/10 +
  []
 
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
+Underfull \hbox (badness 2310) in paragraph at lines 468--469
+[]\T1/pcr/b/n/10 REACHABLE\T1/ptm/b/n/10 : \T1/ptm/m/n/10 Hay al me-nos una tra
+-yec-to-ria cla-ra
+ []
 
- [5]
-Underfull \hbox (badness 10000) in paragraph at lines 423--423
-[]|\T1/ptm/m/n/8 Sin ha-llaz-gos o to-dos
+[5] [6]
+Underfull \hbox (badness 10000) in paragraph at lines 623--625
+[]\T1/ptm/m/n/10 La Ta-bla IV[] de-ta-lla el ren-di-mien-to del cla-si-
  []
 
 
-Underfull \hbox (badness 5817) in paragraph at lines 423--423
-[]|\T1/ptm/m/n/8 Permite el des-plie-gue
+Underfull \hbox (badness 10000) in paragraph at lines 623--625
+\T1/ptm/m/n/10 fi-ca-dor ba-jo el cri-te-rio es-tric-to de CI/CD (don-de
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 423--423
-[]|\T1/ptm/m/n/8 Al me-nos un ha-llaz-go
+Underfull \hbox (badness 10000) in paragraph at lines 623--625
+\T1/pcr/m/n/10 POTENTIALLY_REACHABLE \T1/ptm/m/n/10 fre-na el pa-so co-mo
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 423--423
-\T1/pcr/m/n/8 REACHABLE \T1/ptm/m/n/8 (o \T1/pcr/m/n/8 POTENTIAL \T1/ptm/m/n/8 
-con
- []
-
-
-Underfull \hbox (badness 2005) in paragraph at lines 423--423
-\T1/ptm/m/n/8 duc-ción (\T1/ptm/m/it/8 Qua-lity Ga-te
- []
-
+[7]
 
 LaTeX Font Warning: Font shape `T1/ptm/m/scit' undefined
-(Font)              using `T1/ptm/m/it' instead on input line 486.
+(Font)              using `T1/ptm/m/it' instead on input line 635.
 
-[6]
-Underfull \hbox (badness 10000) in paragraph at lines 521--522
-[]\T1/ptm/m/it/10 Sobre-aproximación con-ser-va-do-ra vs. Pre-ci-sión:
+
+Underfull \hbox (badness 10000) in paragraph at lines 700--701
+[]\T1/ptm/m/n/10 Rastreo de lla-ma-das a soc-kets (\T1/pcr/m/n/10 socket\T1/ptm
+/m/n/10 ,
  []
 
 
-Underfull \hbox (badness 3557) in paragraph at lines 521--522
-\T1/ptm/m/n/10 An-te la pre-sen-cia de me-ta-pro-gra-ma-ción com-ple-ja
+Underfull \hbox (badness 10000) in paragraph at lines 700--701
+\T1/pcr/m/n/10 http.client\T1/ptm/m/n/10 , \T1/pcr/m/n/10 requests\T1/ptm/m/n/1
+0 , \T1/pcr/m/n/10 urllib.request\T1/ptm/m/n/10 ):
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 521--522
-\T1/pcr/m/n/10 POTENTIALLY_REACHABLE \T1/ptm/m/n/10 in-tro-du-ce una le-ve
+Underfull \hbox (badness 5147) in paragraph at lines 711--712
+[]\T1/ptm/m/it/10 Sobre-aproximación pro-tec-to-ra fren-te a la pre-ci-
  []
 
 
-Underfull \hbox (badness 3657) in paragraph at lines 521--522
-\T1/ptm/m/n/10 ta-sa re-si-dual de fal-sas alar-mas con-tro-la-das, pe-ro
+Underfull \hbox (badness 6526) in paragraph at lines 711--712
+\T1/ptm/m/it/10 sión: \T1/ptm/m/n/10 Al to-par con me-ta-pro-gra-ma-ción in-tri
+n-ca-da
  []
 
-(articulo_ieee.bbl [7])
+[8] (articulo_ieee.bbl [9])
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -934,11 +1049,11 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[8
+[10
 
 ] (articulo_ieee.aux
-LaTeX Info: Redefining \. on input line 12.
-LaTeX Info: Redefining \% on input line 12.
+LaTeX Info: Redefining \. on input line 9.
+LaTeX Info: Redefining \% on input line 9.
 )
  ***********
 LaTeX2e <2026-06-01>
@@ -946,42 +1061,45 @@ L3 programming layer <2026-08-10>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 18482 strings out of 467441
- 374670 string characters out of 5407591
- 792070 words of memory out of 5000000
- 47437 multiletter control sequences out of 15000+600000
- 765988 words of font info for 207 fonts, out of 8000000 for 9000
+ 18448 strings out of 467441
+ 374216 string characters out of 5407591
+ 796504 words of memory out of 5000000
+ 47402 multiletter control sequences out of 15000+600000
+ 765534 words of font info for 208 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 92i,12n,94p,1719b,854s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 92i,12n,94p,1735b,858s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/
 cmbx10.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/ams
-fonts/cm/cmmi10.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/p
-ublic/amsfonts/cm/cmmi5.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts
-/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/jay21/AppData/Local/Programs/MiKT
-eX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Users/jay21/AppData/Local/Progr
-ams/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi9.pfb><C:/Users/jay21/AppData/Loc
-al/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users/jay21/App
-Data/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr5.pfb><C:/Users/ja
-y21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr7.pfb><C:/U
-sers/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr8.pf
-b><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/
-cmr9.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfo
-nts/cm/cmsy10.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/pub
-lic/amsfonts/cm/cmsy5.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/t
-ype1/public/amsfonts/cm/cmsy7.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX
-/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:/Users/jay21/AppData/Local/Program
-s/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy9.pfb><C:/Users/jay21/AppData/Local
-/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmti10.pfb><C:/Users/jay21/AppD
-ata/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrb8a.pfb><C:/Users/jay21/Ap
-pData/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrr8a.pfb><C:/Users/jay21/
-AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrro8a.pfb><C:/Users/jay
-21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a.pfb><C:/Users/jay
-21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmbi8a.pfb><C:/Users/ja
-y21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/ja
-y21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
-Output written on articulo_ieee.pdf (8 pages, 338416 bytes).
+fonts/cm/cmbx9.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/pu
+blic/amsfonts/cm/cmex10.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts
+/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/jay21/AppData/Local/Programs/MiK
+TeX/fonts/type1/public/amsfonts/cm/cmmi5.pfb><C:/Users/jay21/AppData/Local/Prog
+rams/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/jay21/AppData/Lo
+cal/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Users/jay21/Ap
+pData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi9.pfb><C:/Users/
+jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><C
+:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr5
+.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/
+cm/cmr7.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/public/am
+sfonts/cm/cmr8.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/pu
+blic/amsfonts/cm/cmr9.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/t
+ype1/public/amsfonts/cm/cmsy10.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTe
+X/fonts/type1/public/amsfonts/cm/cmsy5.pfb><C:/Users/jay21/AppData/Local/Progra
+ms/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/jay21/AppData/Loca
+l/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:/Users/jay21/AppD
+ata/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy9.pfb><C:/Users/ja
+y21/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmti10.pfb><C:
+/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrb8a.pfb><
+C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrr8a.pfb
+><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrro8a.
+pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a.
+pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmbi8a
+.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmr8a
+.pfb><C:/Users/jay21/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmri8
+a.pfb>
+Output written on articulo_ieee.pdf (10 pages, 380648 bytes).
 PDF statistics:
- 153 PDF objects out of 1000 (max. 8388607)
+ 169 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  13 words of extra memory for PDF output out of 10000 (max. 10000000)
 

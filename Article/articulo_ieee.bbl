@@ -76,6 +76,11 @@ G.~A.~A. Prana, A.~Sharma, L.~K. Shar, D.~Lo, and A.~E. Santosa, ``Categorizing
   \emph{IEEE Transactions on Software Engineering}, vol.~48, no.~11, pp.
   4509--4528, 2022.
 
+\bibitem{iso2022sec}
+{ISO/IEC}, \emph{Information security, cybersecurity and privacy protection --
+  Information security management systems -- Requirements}, International
+  Organization for Standardization, Geneva, Switzerland, 2022.
+
 \bibitem{gutierrez2024auditoria}
 M.~Guti{\'e}rrez and G.~Begazo, ``Auditor{\'\i}a de seguridad de software y
   evaluaci{\'o}n de cumplimiento {ISO/IEC 27001} en pymes tecnol{\'o}gicas de
@@ -105,10 +110,12 @@ C.~Bogart, C.~K{\"a}stner, J.~Herbsleb, and F.~Thung, ``How to break an {API}:
   Foundations of Software Engineering (FSE 2016)}.\hskip 1em plus 0.5em minus
   0.4em\relax ACM, 2016, pp. 287--298.
 
-\bibitem{fowler2018refactoring}
-M.~Fowler, \emph{Refactoring: Improving the Design of Existing Code},
-  2nd~ed.\hskip 1em plus 0.5em minus 0.4em\relax Boston, MA: Addison-Wesley,
-  2018.
+\bibitem{xavier2017historical}
+L.~Xavier, A.~Brito, A.~Hora, and M.~T. Valente, ``Historical and impact
+  analysis of {API} breaking changes: A study on software libraries,'' in
+  \emph{Proceedings of the 2017 IEEE 24th International Conference on Software
+  Analysis, Evolution and Reengineering (SANER 2017)}.\hskip 1em plus 0.5em
+  minus 0.4em\relax IEEE, 2017, pp. 138--148.
 
 \bibitem{salis2021pycg}
 V.~Salis, T.~Sotiropoulos, P.~Louridas, D.~Spinellis, and D.~Mitropoulos,
@@ -145,14 +152,14 @@ F.~Nielson, H.~R. Nielson, and C.~Hankin, \emph{Principles of Program
   Springer-Verlag, 1999.
 
 \bibitem{sotiropoulos2023jarvis}
-T.~Sotiropoulos, V.~Salis, P.~Louridas, D.~Spinellis, and D.~Mitropoulos,
-  ``{JARVIS}: Scalable and precise application-centered call graph construction
-  for {Python},'' 2023.
+K.~Huang, Y.~Yan, B.~Chen, Y.~Li, Z.~Tao, and X.~Peng, ``{JARVIS}: Scalable and
+  precise application-centered call graph construction for {Python},''
+  \emph{arXiv preprint arXiv:2305.05949}, 2023.
 
 \bibitem{alexopoulos2026cross}
 G.~Alexopoulos, N.~Alexopoulos, T.~Sotiropoulos, C.~Mitropoulos, Z.~Su, and
   D.~Mitropoulos, ``Cross-ecosystem vulnerability analysis for {Python}
-  applications,'' 2026.
+  applications,'' \emph{arXiv preprint arXiv:2603.18693}, 2026.
 
 \bibitem{bhandari2022cvefixes}
 G.~Bhandari, A.~Naseer, and L.~Moonen, ``{CVEfixes}: A comprehensive dataset of

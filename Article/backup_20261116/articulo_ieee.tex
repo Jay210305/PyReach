@@ -1,0 +1,733 @@
+\documentclass[conference]{IEEEtran}
+
+% --- Paquetes Esenciales ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla,es-nodecimaldot,es-noquoting]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{url}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+
+% --- Configuración de Comandos Especiales para Evitar Ligaduras en Código ---
+\newcommand{\clioption}[1]{\texttt{-{}-#1}}
+\newcommand{\pydunder}[1]{\texttt{\_\_#1\_\_}}
+
+% --- Optimización de Floats para incrustación continua en el texto ---
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.80}
+
+\begin{document}
+
+\title{Análisis Estático Interprocedimental de Alcanzabilidad mediante Grafos de Llamadas para la Mitigación de Alertas Espurias en Dependencias de Python\\
+{\footnotesize \textsuperscript{*}Caso de Estudio Industrial: PyReach en Lidercom Perú S.A.C.}}
+
+\author{
+    \IEEEauthorblockN{Julio E. Centeno León\IEEEauthorrefmark{1}, José A. Yáñez Mejía\IEEEauthorrefmark{2} y Karina Rosas Paredes\IEEEauthorrefmark{3}}
+    \IEEEauthorblockA{Escuela Profesional de Ingeniería de Sistemas, Universidad Católica de Santa María, Arequipa, Perú\\
+    Emails: \IEEEauthorrefmark{1}julio.centeno@ucsm.edu.pe, \IEEEauthorrefmark{2}jose.yanez@ucsm.edu.pe, \IEEEauthorrefmark{3}kparedes@ucsm.edu.pe}
+}
+
+\maketitle
+
+\begin{abstract}
+Modern software engineering relies extensively on third-party open-source libraries, which constitute up to 80\% of executable code bases in Python microservices. Consequently, software supply chain vulnerabilities (CVEs) have surged. Conventional Software Composition Analysis (SCA) tools operate superficially by matching version strings declared in package manifests (e.g., \texttt{requirements.txt}), disregarding execution context. This yields an overwhelming 80\%--90\% false positive rate, as the vulnerable routines in transitive dependencies are rarely invoked. In regulated or proprietary industrial environments governed by ISO/IEC 27001:2022, cloud-based commercial SaaS scanners are strictly prohibited due to code leakage and IP confidentiality risks, causing acute developer alert fatigue and exhausting over 10 hours weekly in manual triage.
+
+This paper presents \textit{PyReach}, a 100\% on-premise, CLI-driven interprocedural static reachability analyzer for Python 3.10+. PyReach traverses the Abstract Syntax Tree (AST) of host applications and resolved \texttt{site-packages}, computes module symbol tables across three visitor passes (node extraction, class inheritance, and call-site resolution), and constructs an interprocedural directed Call Graph using NetworkX. By querying an offline SQLite database seeded with OpenSSF OSV security advisories, PyReach executes a bounded breadth-first search (Bounded BFS, $k=5$) from application entrypoints to vulnerable symbols. To prevent false negatives in dynamic Python constructs, PyReach enforces a conservative over-approximation policy, classifying findings deterministically into \texttt{REACHABLE}, \texttt{NOT\_REACHABLE}, or \texttt{POTENTIALLY\_REACHABLE}, and emitting OASIS SARIF v2.1.0 diagnostics for automated CI/CD quality gating. Validated on an expanded benchmark suite of 8 real microservices and projects against a manually audited ground truth, PyReach pruned 81.8\% of spurious alerts (ranging between 80.0\% and 87.5\% across individual projects, eliminating 63 out of 77 manifest alerts) while achieving an empirical 100\% recall with strictly zero critical false negatives (\textit{soundness}), a precision of 78.6\%, and an F1-score of 88.0\%. PyReach executed scans in 1.18~s (cold) and 0.84~s (warm), maintained peak memory under 7.3~MB, and guaranteed strictly zero network egress, fully preserving corporate data sovereignty.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Software supply chain security, static analysis, call graph, reachability analysis, Python AST, false positives, DevSecOps, SARIF, ISO/IEC 27001.
+\end{IEEEkeywords}
+
+\vspace{0.15cm}
+\begin{center}
+{\bfseries\small RESUMEN}
+\end{center}
+\begin{small}
+\textit{El desarrollo en Python descansa sobre paquetes ajenos. En microservicios abarcan el 80\% del código ejecutable. Esta práctica propaga fallos conocidos (CVE) por toda la cadena de suministro. Los escáneres SCA habituales inspeccionan manifiestos (\texttt{requirements.txt}) sin mirar la ejecución. El panorama es desalentador: entre el 80\% y el 90\% de los avisos señalan funciones que nadie llama. Son falsas alarmas. Bajo la norma ISO/IEC 27001:2022, las herramientas SaaS en la nube quedan prohibidas por secreto industrial. El equipo técnico pierde más de 10 horas semanales filtrando alertas a mano. Para desarmar este nudo creamos \textit{PyReach}, un analizador estático interprocedimental para Python 3.10+ que corre en local. La herramienta recorre el AST propio. También el de \texttt{site-packages}. Luego levanta el Grafo de Llamadas en tres fases con NetworkX. Explora caminos mediante búsqueda en anchura acotada (Bounded BFS, $k=5$) hacia registros de OpenSSF OSV en SQLite sin conexión. Ante trucos dinámicos, aplica una sobre-aproximación protectora. Reparte los hallazgos en \texttt{REACHABLE}, \texttt{NOT\_REACHABLE} o \texttt{POTENTIALLY\_REACHABLE}. Emite reportes OASIS SARIF v2.1.0 para pipelines de CI/CD. Probado en 8 microservicios reales frente a un oráculo auditado a mano, \textit{PyReach} descartó el 81.8\% de las alertas espurias (rango de 80.0\% a 87.5\%, podando 63 de 77 alarmas). Logró un 100\% de exhaustividad sin omitir fallos críticos (\textit{soundness}). Marcó una precisión de 78.6\%, un valor F1 de 88.0\%, latencias de 1.18~s en frío y 0.84~s en caliente, memoria bajo 7.3~MB y cero bytes volcados a internet.}
+\end{small}
+
+\vspace{0.1cm}
+\noindent\textbf{\textit{Palabras clave---}}Cadena de suministro de software, análisis estático, grafos de llamadas, análisis de alcanzabilidad, AST de Python, falsos positivos, DevSecOps, SARIF, ISO/IEC 27001.
+
+\section{Introducción}
+\IEEEPARstart{E}{l} desarrollo ágil bajo DevSecOps descansa hoy sobre paquetes abiertos. Casi todo el software moderno los usa. Mucho. Más del 80\% del código ejecutable en tuberías de CI/CD proviene de repositorios públicos \cite{synopsys2024ossra, decan2019empirical}. Esa dependencia acarrea un costo serio: las vulnerabilidades conocidas (CVE) se cuelan directo en la cadena de suministro (\textit{software supply chain}) \cite{ladisa2023sok, alfadel2023empirical, chinthanet2023lag}. Los riesgos viajan en paquetes ajenos. Nadie está a salvo.
+
+Frente a este peligro, los equipos recurren a herramientas de composición de software (SCA). Escáneres como \textit{pip-audit}, \textit{Safety} o \textit{Dependabot} apenas leen manifiestos tipo \texttt{requirements.txt} o \texttt{Pipfile.lock}. Solo cotejan versiones. Dan por sentado, sin embargo, algo falso: guardar una librería en disco no implica ejecutar sus rutinas defectuosas. No siempre es así \cite{pashchenko2022vuln4real, dann2021identifying, duan2023towards}. Y la realidad es otra. Entre el 80\% y el 90\% de esos avisos corresponden a código inerte \cite{pashchenko2022vuln4real, ponta2020detection, prana2022empirical}. Rutinas muertas. Jamás corren en el servidor. Son simples alertas fantasma.
+
+Bajo políticas rigurosas de seguridad, el panorama se complica todavía más. En \textbf{Lidercom Perú S.A.C.}, firma educativa sujeta a los controles A.8.8, A.8.12 y A.8.28 de \textbf{ISO/IEC 27001:2022} \cite{iso2022sec, gutierrez2024auditoria}, los servicios SaaS como \textit{Snyk} o \textit{Endor Labs} están vetados. La razón es puntual: exigen enviar código fuente a servidores externos \cite{ladisa2023sok, ohm2022sok}. O esquemas sintácticos completos. Por culpa de esa restricción, el equipo técnico perdía más de 10 horas cada semana \cite{sadowski2018lessons}. Descartaban falsas alarmas a mano. El desgaste era evidente. Semejante carga desemboca en tres fricciones operativas:
+\begin{enumerate}
+    \item \textit{Fatiga de alertas} (\textit{alert fatigue}) entre los programadores. Terminan pasando por alto incidentes graves \cite{johnson2013developers}.
+    \item \textit{Inestabilidad en producción}: forzar la subida de versiones rompe interfaces de programación (\textit{breaking changes}) y atrasa entregas \cite{bogart2016break, xavier2017historical}.
+    \item Sobrecostos de operación continuos, imposibles de mitigar con nubes ajenas si se desea preservar la soberanía del código \cite{ladisa2023sok}.
+\end{enumerate}
+
+Para atajar este problema de raíz, diseñamos e implementamos \textbf{\textit{PyReach}}. Se trata de una herramienta estática interprocedimental. Corre en local (\textit{on-premise}) sobre Python 3.10+. El sistema recorre el Árbol de Sintaxis Abstracta (AST) del proyecto. También examina los paquetes en \texttt{site-packages}. Con esa información teje un Grafo de Llamadas (\textit{Call Graph}) dirigido \cite{salis2021pycg, ryder1979constructing}. El grafo se cruza con OpenSSF OSV \cite{openssf2023osv}. Registros abiertos y públicos. Así se verifica si las rutinas vulnerables tienen conexión desde los puntos de entrada (\textit{entrypoints}). Sea directa o indirecta. Al final, los hallazgos se plasman en reportes estándar OASIS SARIF v2.1.0 \cite{oasis2019sarif} para trabar o autorizar pasos en CI/CD sin intervención de operarios \cite{humble2010continuous}.
+
+Este trabajo aporta lo siguiente:
+\begin{itemize}
+    \item Un algoritmo para construir el Grafo de Llamadas mediante tres pasadas \textit{Visitor} sobre el AST de CPython. Resuelve símbolos, cadenas de herencia y polimorfismo en módulos dentro de \texttt{site-packages}.
+    \item Motor de exploración en anchura acotada (Bounded BFS) con cota fija $k=5$ sobre NetworkX. Se apoya en una sobre-aproximación ante trucos dinámicos que asegura cero omisiones críticas (\textit{soundness}).
+    \item Esquema de almacenamiento relacional en SQLite 3 para OpenSSF OSV con índices B-Tree según PEP 503. Logra consultas en menos de 0.18~ms por paquete sin servicios en segundo plano.
+    \item Compuerta de calidad con exportación OASIS SARIF v2.1.0 y códigos de salida bien definidos para integración continua.
+    \item Evaluación con 8 microservicios reales contrastados con un oráculo auditado a mano. Se eliminó el 81.8\% de los avisos espurios (rango de 80.0\% a 87.5\%, descartando 63 de 77 alertas), con exhaustividad del 100.0\% (Recall = 1.00), análisis de sensibilidad para $k$ y cero fuga de datos por red.
+\end{itemize}
+
+\section{Antecedentes y Estado del Arte}
+
+\subsection{Generación de Grafos de Llamadas en Lenguajes Dinámicos}
+Ryder formalizó hace décadas el uso de grafos dirigidos para mapear llamadas entre funciones \cite{ryder1979constructing}. En lenguajes compilados como Java o C++, inferir tipos en frío ayuda a saber qué función llama a cuál \cite{nielson1999principles}. En Python, al contrario, la cosa va así: la introspección, el polimorfismo tardío y trucos como \texttt{eval}, \texttt{getattr} o decoradores al vuelo ponen trabas serias a cualquier análisis estático \cite{salis2021pycg, sotiropoulos2023jarvis, alexopoulos2026cross}. El código cambia en plena marcha. Todo es mutable.
+
+Salis y su equipo crearon \textit{PyCG} \cite{salis2021pycg}. Con un rastreo minucioso de punteros y módulos sobre el AST de CPython, llegaron a un 99.2\% de precisión en ensayos sintéticos. Pero la herramienta nació como un prototipo académico: no baja a resolver dependencias anidadas en \texttt{site-packages}, ignora las bases de datos de fallos y tampoco emite reportes para pipelines de CI/CD \cite{salis2021pycg}. Tiempo después, Huang et al. \cite{sotiropoulos2023jarvis} presentaron \textit{JARVIS}. Este motor usa grafos locales de tipos para ganar velocidad. Sigue limitado, sin embargo, a bancos de laboratorio, sin enlaces a CVE ni compuertas de despliegue. Por su parte, Alexopoulos et al. \cite{alexopoulos2026cross} estudiaron el empaquetado de librerías nativas (\textit{vendoring}). Recalcaron el valor de los grafos interprocedimentales para contener falsas alarmas entre ecosistemas.
+
+\subsection{Análisis de Alcanzabilidad de Vulnerabilidades}
+El filtrado fino de dependencias arrancó con fuerza en Java. Dann et al. \cite{dann2021identifying} y Ponta et al. \cite{ponta2020detection} bajaron la lupa hasta el nivel de método. Dieron origen a \textit{Eclipse Steady}. Años más tarde, Pashchenko et al. \cite{pashchenko2022vuln4real} armaron el corpus \textit{Vuln4Real}. Al revisar 200 proyectos reales, descubrieron un dato revelador: menos del 10\% de las vulnerabilidades reportadas llega a tocarse en ejecución. Prana et al. \cite{prana2022empirical} llegaron a conclusiones parecidas al clasificar fallos en paquetes abiertos. La mayor parte del código externo funciona como utilitario de soporte. El huésped apenas consume una fracción mínima. Poco después, Duan et al. \cite{duan2023towards} insistieron en automatizar esta distinción para quitarle peso de encima a los analistas de seguridad.
+
+\subsection{Riesgos en la Cadena de Suministro de Software}
+Ladisa et al. \cite{ladisa2023sok} publicaron una taxonomía detallada sobre ataques en la cadena de suministro. Advirtieron un peligro concreto: los escáneres SaaS comerciales pueden fugar propiedad intelectual \cite{ladisa2023sok}. O metadatos sensibles al procesar código ajeno. Por otra parte, Ohm et al. \cite{ohm2022sok} junto con Bhandari et al. \cite{bhandari2022cvefixes} siguieron de cerca la difusión de librerías dañinas y la demora al aplicar parches en repositorios públicos. Al analizar el historial de PyPI a fondo, Decan et al. \cite{decan2019empirical}, Alfadel et al. \cite{alfadel2023empirical} y Chinthanet et al. \cite{chinthanet2023lag} notaron que las brechas graves duermen en capas transitivas hondas. Allí el programador rara vez mira. El riesgo queda oculto.
+
+\begin{table*}[!t]
+\centering
+\caption{Comparación Sistemática de Paradigmas Tecnológicos de Análisis de Vulnerabilidades}
+\label{tab:estado_arte}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{4.3cm}}
+\toprule
+\textbf{Criterio de Evaluación} & \textbf{Enfoque A: SCA Manifiesto} & \textbf{Enfoque B: SaaS en la Nube} & \textbf{Enfoque C: PyReach (Propuesto)} \\
+\midrule
+\textbf{Herramientas representativas} & \textit{pip-audit}, \textit{Safety}, \textit{Dependabot} & \textit{Snyk Open Source}, \textit{Endor Labs} & \textbf{\textit{PyReach CLI}} \\
+\textbf{Nivel de inspección} & Superficial (metadatos y versiones) & Profundo asistido por telemetría remota & \textbf{Profundo interprocedimental en AST y dependencias} \\
+\textbf{Soberanía de datos (ISO 27001)} & Alta (local, pero sin análisis de código) & Incompatible (transfiere código a la nube) & \textbf{Total (100\% on-premise, 0 bytes en red)} \\
+\textbf{Tasa de falsos positivos} & Crítica ($>80\%$ alertas no ejecutables) & Baja ($<15\%$ alertas espurias) & \textbf{Muy baja (poda determinista $\ge 80\%$)} \\
+\textbf{Latencia por escaneo} & $<5$ s & Variable (dependiente de enlace WAN) & \textbf{$<2$ s (presupuesto en CI/CD $<45$ s)} \\
+\textbf{Interoperabilidad de salida} & Texto plano / JSON propietario & Dashboard privativo / SARIF restringido & \textbf{OASIS SARIF v2.1.0 nativo y JSON} \\
+\textbf{Modelo operacional} & CLI libre & Suscripción anual privativa & \textbf{CLI de código abierto / local corporativo} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Comparación de Paradigmas}
+La Tabla \ref{tab:estado_arte} resume las diferencias clave. Compara las tres alternativas actuales. A la luz de los datos, solo el Enfoque C (\textit{PyReach}) consigue recortar con fuerza las alertas inertes y acatar, al mismo tiempo, las normas de soberanía que impone ISO/IEC 27001:2022 \cite{iso2022sec, ladisa2023sok, gutierrez2024auditoria}. Nada sale del servidor local. Cero fugas.
+
+\section{Arquitectura del Sistema y Flujo Metodológico}
+
+\subsection{Arquitectura en Capas Desacoplada}
+Dividimos \textit{PyReach} en cuatro capas bien delimitadas. Seguimos para ello las pautas de ISO/IEC/IEEE 29148:2018 \cite{iso2018req} e ISO/IEC 25010:2011 \cite{iso2011sqa}. Todo corre dentro del mismo proceso de CPython. Así no se pierde tiempo serializando datos entre módulos (Fig. \ref{fig:arquitectura_capas}). El diseño prioriza la cohesión interna:
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    layer/.style={rectangle, draw=blue!80!black, fill=blue!5, thick, rounded corners=4pt, minimum width=8.2cm, minimum height=1.20cm, align=center, font=\scriptsize},
+    titlebox/.style={font=\scriptsize\bfseries, color=blue!90!black, anchor=west},
+    compbox/.style={rectangle, draw=blue!50!black, fill=white, rounded corners=2pt, minimum height=0.62cm, minimum width=2.35cm, font=\tiny, align=center},
+    arrow/.style={-{Latex[scale=0.9]}, thick, color=blue!80!black}
+]
+
+% Capa 4: Presentación
+\node[layer, fill=green!5, draw=green!60!black] (l4) at (0, 4.05) {};
+\node[titlebox, color=green!60!black] at (-3.9, 4.45) {\textbf{Capa de Presentación y Salida}};
+\node[compbox] (c41) at (-2.65, 3.9) {CLI Controller\\(\texttt{cli.py})};
+\node[compbox] (c42) at (0, 3.9) {SARIF Serializer\\(\texttt{output/sarif.py})};
+\node[compbox] (c43) at (2.65, 3.9) {CI/CD Quality Gate\\(Exit Codes 0, 1, 2)};
+
+% Capa 3: Lógica de Negocio
+\node[layer, fill=blue!5, draw=blue!70!black] (l3) at (0, 2.70) {};
+\node[titlebox] at (-3.9, 3.10) {\textbf{Capa de Lógica de Negocio (Core Analítico)}};
+\node[compbox] (c31) at (-2.65, 2.55) {AST Builder\\(\texttt{ast/builder.py})};
+\node[compbox] (c32) at (0, 2.55) {Call Graph Engine\\(NetworkX \texttt{DiGraph})};
+\node[compbox] (c33) at (2.65, 2.55) {Reachability Analyzer\\(Bounded BFS $k=5$)};
+
+% Capa 2: Persistencia
+\node[layer, fill=orange!5, draw=orange!70!black] (l2) at (0, 1.35) {};
+\node[titlebox, color=orange!80!black] at (-3.9, 1.75) {\textbf{Capa de Persistencia (Offline DB)}};
+\node[compbox, minimum width=3.7cm] (c21) at (-1.95, 1.20) {OSV Mapper (\texttt{osv/mapper.py})\\Mapeo OpenSSF OSV $\to$ SQLite};
+\node[compbox, minimum width=3.7cm] (c22) at (1.95, 1.20) {SQLite 3 Embebida (\texttt{osv.db})\\Índices B-Tree PEP 503 ($<0.18$ ms)};
+
+% Capa 1: Entrada
+\node[layer, fill=gray!5, draw=gray!70!black] (l1) at (0, 0.0) {};
+\node[titlebox, color=gray!80!black] at (-3.9, 0.40) {\textbf{Capa de Entrada y Carga}};
+\node[compbox, minimum width=3.7cm] (c11) at (-1.95, -0.15) {Manifest Parsers\\(\texttt{requirements.txt}, \texttt{Pipfile.lock})};
+\node[compbox, minimum width=3.7cm] (c12) at (1.95, -0.15) {Source \& Package Loaders\\(\texttt{loaders/source.py}, \texttt{site-packages})};
+
+% Flechas inter-capas
+\draw[arrow] (0, 0.60) -- (0, 0.75);
+\draw[arrow] (0, 1.95) -- (0, 2.10);
+\draw[arrow] (0, 3.30) -- (0, 3.45);
+
+\end{tikzpicture}
+}
+\caption{Arquitectura en cuatro capas desacopladas de \textit{PyReach}: desde la ingesta de artefactos hasta la emisión de reportes estandarizados.}
+\label{fig:arquitectura_capas}
+\end{figure}
+
+\begin{enumerate}
+    \item \textbf{Capa de Entrada (\texttt{pyreach.parsers}, \texttt{pyreach.loaders}):} Lee los manifiestos de paquetes (\texttt{requirements.txt}, \texttt{Pipfile.lock}) apoyándose en \texttt{packaging}. El módulo \texttt{source} delimita la lectura a los archivos del repositorio. A su vez, \texttt{packages} rastrea la ubicación exacta de las librerías en \texttt{site-packages}.
+    \item \textbf{Capa de Persistencia (\texttt{pyreach.db}):} Administra las consultas hacia la base local SQLite 3 (\texttt{\~{}/.pyreach/osv.db}), donde residen los avisos de seguridad ya normalizados.
+    \item \textbf{Capa de Lógica de Negocio (\texttt{pyreach.ast}, \texttt{callgraph}, \texttt{reachability}):} Es el motor central del sistema. Convierte el código Python en árboles sintácticos (\texttt{ModuleAST}). Recopila tablas de símbolos, teje el grafo dirigido con NetworkX y calcula rutas entre funciones.
+    \item \textbf{Capa de Presentación y Salida (\texttt{pyreach.cli}, \texttt{pyreach.output}):} Maneja la interfaz de consola con \texttt{argparse}. Define códigos de salida para CI/CD y formatea los resultados en reportes OASIS SARIF v2.1.0 o tablas legibles por terminal.
+\end{enumerate}
+
+\subsection{Flujo Metodológico y Pipeline de Ejecución}
+El proceso de análisis abarca cinco fases encadenadas, tal como resume la Fig. \ref{fig:flujo_proyecto}. Los datos fluyen sin tropiezos. Van desde la lectura de dependencias hasta el veredicto final. Es un cauce ordenado.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=0.45cm and 0.5cm,
+    stepnode/.style={rectangle, draw=blue!80!black, fill=blue!5, thick, rounded corners=3pt, minimum height=0.90cm, minimum width=7.4cm, align=left, font=\scriptsize, inner xsep=8pt, inner ysep=4pt},
+    arrow/.style={-{Latex[scale=0.9]}, thick, color=blue!80!black}
+]
+
+\node[stepnode, fill=gray!8, draw=gray!70] (s1) {
+    \textbf{1. Ingesta y Normalización:}\\
+    {\tiny Lectura de manifiestos (\texttt{requirements.txt}), normalización PEP 503 y extracción de dependencias.}
+};
+
+\node[stepnode, below=of s1, fill=orange!8, draw=orange!70!black] (s2) {
+    \textbf{2. Consulta Offline a Base de Conocimiento OSV (SQLite):}\\
+    {\tiny Cotejo de versiones contra intervalos afectados de OpenSSF OSV ($<0.18$ ms/paquete).}
+};
+
+\node[stepnode, below=of s2, fill=blue!8, draw=blue!70!black] (s3) {
+    \textbf{3. Análisis Sintáctico AST y Construcción del Call Graph:}\\
+    {\tiny Patrón Visitor en CPython AST; grafo dirigido en 3 pasadas (nodos, herencia, aristas) con NetworkX.}
+};
+
+\node[stepnode, below=of s3, fill=purple!8, draw=purple!70!black] (s4) {
+    \textbf{4. Búsqueda Acotada de Alcanzabilidad (Bounded BFS $k=5$):}\\
+    {\tiny Exploración desde entrypoints hacia funciones vulnerables con detección de ciclos y dinámicas.}
+};
+
+\node[stepnode, below=of s4, fill=green!8, draw=green!70!black] (s5) {
+    \textbf{5. Clasificación Tri-Estado y Compuerta de Calidad:}\\
+    {\tiny Veredicto: \texttt{REACHABLE}, \texttt{POTENTIALLY\_REACHABLE}, \texttt{NOT\_REACHABLE} $\to$ SARIF v2.1.0 y Exit Code.}
+};
+
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s3) -- (s4);
+\draw[arrow] (s4) -- (s5);
+
+\end{tikzpicture}
+}
+\caption{Diagrama de flujo del proyecto: pipeline metodológico y ciclo de datos del análisis de alcanzabilidad en \textit{PyReach}.}
+\label{fig:flujo_proyecto}
+\end{figure}
+
+\subsection{Modelo de Persistencia y Estrategia de Indexación Relacional}
+Buscábamos consultas ágiles. Sin salir a internet. Por eso montamos el registro de seguridad sobre SQLite 3, adaptando el formato OpenSSF OSV (v1.6.0) \cite{openssf2023osv}. La estructura descansa en tres tablas clave:
+\begin{itemize}
+    \item \texttt{vulnerabilities}: Guarda los datos principales del aviso: código OSV/CVE, nombre limpio del paquete, resumen técnico y fechas oficiales.
+    \item \texttt{affected\_ranges}: Fija los rangos de versiones afectadas (\texttt{introduced}, \texttt{fixed}), revisando límites abiertos o cerrados con las reglas de \texttt{packaging.version}.
+    \item \texttt{vulnerable\_functions}: Vincula cada fallo con los nombres canónicos (\textit{FQNs}) de las rutinas o símbolos bajo sospecha.
+\end{itemize}
+
+Los nombres de dependencias se estandarizan con PEP 503. Gracias a un índice B-Tree doble en \texttt{vulnerabilities(package\_name)} y \texttt{vulnerable\_functions(vuln\_id, function\_qname)}, la consulta media toma apenas \textbf{0.18~ms} por paquete en unidades de estado sólido (SSD). Revisar 50 librerías toma menos de 10~ms. Todo en disco local. Es un tiro veloz.
+
+\subsection{Despliegue e Integración en Infraestructura CI/CD}
+La Fig. \ref{fig:nodos_infraestructura} muestra la topología de red en Lidercom Perú S.A.C. Los pipelines corren sobre \textit{GitLab Runners} propios. Están aislados en una red local dedicada (VLAN de desarrollo). El motor trabaja sin nube. Cero contacto externo. Tan solo una tarea programada semanal refresca la base local SQLite con el comando \texttt{pyreach sync-osv}. Nada más que eso.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=0.55cm and 0.55cm,
+    hostbox/.style={rectangle, draw=gray!70!black, fill=gray!5, thick, rounded corners=4pt, minimum width=7.6cm, minimum height=1.3cm, align=left, font=\scriptsize},
+    innerbox/.style={rectangle, draw=blue!60!black, fill=white, rounded corners=2pt, minimum height=0.62cm, minimum width=2.1cm, font=\tiny, align=center},
+    arrow/.style={-{Latex[scale=0.9]}, thick, color=blue!80!black}
+]
+
+% Nodo 1: Desarrollador
+\node[hostbox, minimum height=1.25cm] (dev_node) at (0, 3.8) {};
+\node[anchor=west, font=\scriptsize\bfseries] at (-3.6, 4.2) {Estación de Trabajo / IDE};
+\node[innerbox, minimum width=3.1cm] (git_push) at (-1.7, 3.7) {Desarrollador / CLI Local\\(\texttt{git push origin main})};
+\node[innerbox, minimum width=3.1cm] (local_scan) at (1.7, 3.7) {Escaneo Pre-Commit\\(\texttt{pyreach scan .})};
+
+% Nodo 2: Runner On-Premise
+\node[hostbox, minimum height=2.35cm, draw=green!60!black, fill=green!3] (ci_node) at (0, 1.6) {};
+\node[anchor=west, font=\scriptsize\bfseries, color=green!60!black] at (-3.6, 2.5) {Servidor CI/CD On-Premise (VLAN Aislada)};
+
+\node[innerbox, minimum width=2.1cm, draw=blue!70!black] (runner) at (-2.3, 1.9) {GitLab Runner\\(Docker Executor)};
+\node[innerbox, minimum width=2.2cm, draw=purple!70!black] (pyreach_run) at (0, 1.9) {PyReach Engine\\(Python 3.10+ / AST)};
+\node[innerbox, minimum width=2.0cm, draw=orange!70!black] (osv_db) at (2.2, 1.9) {SQLite OSV DB\\(\texttt{osv.db} Local)};
+
+\node[innerbox, minimum width=6.8cm, fill=yellow!10, draw=yellow!60!black] (egress) at (0, 0.95) {\textbf{Aislamiento Total ISO/IEC 27001:} 0 bytes transferidos a Internet / Sin egress WAN};
+
+% Nodo 3: Salidas / Compuerta
+\node[hostbox, minimum height=1.25cm] (gate_node) at (0, -0.6) {};
+\node[anchor=west, font=\scriptsize\bfseries] at (-3.6, -0.2) {Compuerta de Calidad (Quality Gate)};
+\node[innerbox, minimum width=3.1cm, fill=green!10, draw=green!60!black] (sarif_out) at (-1.7, -0.7) {Reporte SARIF v2.1.0\\(\texttt{codeFlows} $\to$ MR Widget)};
+\node[innerbox, minimum width=3.1cm, fill=red!10, draw=red!60!black] (exit_code) at (1.7, -0.7) {Control de Salida\\(Exit Code 0: Pass / 1: Fail)};
+
+% Conexiones
+\draw[arrow] (2.8, 3.1) -- node[right, font=\tiny] {Git Push} (2.8, 2.8);
+\draw[arrow] (runner) -- (pyreach_run);
+\draw[arrow] (osv_db) -- (pyreach_run);
+\draw[arrow] (2.8, 0.4) -- node[right, font=\tiny] {SARIF \& Exit Code} (2.8, 0.05);
+
+\end{tikzpicture}
+}
+\caption{Diagrama de nodos de despliegue en infraestructura local de CI/CD para Lidercom Perú S.A.C., garantizando aislamiento estricto de red.}
+\label{fig:nodos_infraestructura}
+\end{figure}
+
+\section{Motor de Grafos y Algoritmo de Alcanzabilidad}
+
+\subsection{Formalización del Grafo de Llamadas}
+Definimos el Grafo de Llamadas interprocedimental como una estructura dirigida $G = (V, E)$, modelada con \texttt{networkx.DiGraph} \cite{hagberg2008exploring}:
+\begin{itemize}
+    \item $V$ reúne los nodos tipados $\text{CGNode} = (\text{fqn}, \text{path}, \text{line}, \tau)$. Aquí $\text{fqn} \in \Sigma^*$ indica la ruta jerárquica completa (\textit{Fully Qualified Name}), $\text{path}$ apunta al archivo, $\text{line}$ marca la línea de código y $\tau \in \{\text{FUNCTION}, \text{METHOD}, \text{CLASS}, \text{LAMBDA}\}$ etiqueta la entidad sintáctica.
+    \item $E \subseteq V \times V \times \Omega \times [0, 1]$ agrupa las conexiones dirigidas $\text{CGEdge} = (u, v, \omega, c)$, donde $u$ actúa como llamador (\textit{caller}), $v$ como llamado (\textit{callee}), $\omega \in \{\text{STATIC}, \text{DYNAMIC}, \text{INHERITANCE}, \text{IMPORT}\}$ distingue la clase de salto y $c \in [0, 1]$ mide el grado de certeza estática.
+\end{itemize}
+
+\subsection{Construcción del Grafo de Llamadas en Tres Pasadas}
+Resolver llamadas cruzadas exige orden. Mucho rigor. No hay atajos. \textit{PyReach} procesa los archivos mediante tres pasadas independientes basadas en \texttt{ast.NodeVisitor} de CPython. El procedimiento completo se describe en el Algoritmo 1.
+
+\begin{algorithm}[t]
+\caption{Construcción del Grafo de Llamadas en Tres Pasadas}
+\label{alg:callgraph_construction}
+\begin{algorithmic}[1]
+\REQUIRE Conjunto de módulos analizados $\mathcal{M} = \{M_1, \dots, M_n\}$, Índice de resolución $\mathcal{I}$.
+\ENSURE Grafo dirigido de llamadas $G = (V, E)$.
+\STATE $G \leftarrow \text{DiGraph}()$
+\STATE Insertar sentinelas dinámicos: $V \leftarrow V \cup \{\langle\text{DYNAMIC}\rangle, \langle\text{UNRESOLVED}\rangle\}$
+\STATE \textbf{// Pasada 1: Extracción de Nodos y Tablas de Símbolos}
+\FORALL{$M \in \mathcal{M}$}
+    \STATE $\mathit{extractor} \leftarrow \text{NodeExtractor}(M, G)$
+    \STATE $\mathit{extractor}.\text{visit}(M.\text{tree})$
+\ENDFOR
+\FORALL{$v \in V \text{ tal que } v.\tau = \text{CLASS}$}
+    \FORALL{$m \in \{\text{`\_\_new\_\_'}, \text{`\_\_init\_\_'}\}$}
+        \IF{$v.m \in V$}
+            \STATE $E \leftarrow E \cup \{(v, v.m, \text{STATIC}, 1.0)\}$
+        \ENDIF
+    \ENDFOR
+\ENDFOR
+\STATE \textbf{// Pasada 2: Resolución de Jerarquías de Herencia}
+\FORALL{$M \in \mathcal{M}$}
+    \FORALL{$\text{ClassDef } C \in M.\text{tree}$}
+        \STATE $u \leftarrow \text{FQN}(M, C.\text{name})$
+        \FORALL{$\text{base } B \in C.\text{bases}$}
+            \STATE $v \leftarrow \text{ResolverBase}(B, M, \mathcal{I}, G)$
+            \IF{$v \neq \mathbf{null} \land v \neq u \land v \in V$}
+                \STATE $E \leftarrow E \cup \{(u, v, \text{INHERITANCE}, 1.0)\}$
+            \ENDIF
+        \ENDFOR
+    \ENDFOR
+\ENDFOR
+\STATE \textbf{// Pasada 3: Extracción de Sitios de Llamada y Aristas}
+\FORALL{$M \in \mathcal{M}$}
+    \STATE $\mathit{edge\_visitor} \leftarrow \text{EdgeExtractor}(M, G, \mathcal{I})$
+    \STATE $\mathit{edge\_visitor}.\text{visit}(M.\text{tree})$
+\ENDFOR
+\RETURN $G$
+\end{algorithmic}
+\end{algorithm}
+
+Cada pasada cumple un rol específico:
+\begin{enumerate}
+    \item \textbf{Pasada 1 (Extracción de Nodos y Símbolos):} El componente \texttt{NodeExtractor} inspecciona las estructuras clave del AST (\texttt{FunctionDef}, \texttt{AsyncFunctionDef}, \texttt{ClassDef}, expresiones \texttt{Lambda}). Obtiene los identificadores canónicos. Anota decoradores habituales (\texttt{@staticmethod}, \texttt{@classmethod}, \texttt{@property}). Asigna la etiqueta $\tau$ y añade el nodo a $G$. De paso, conecta los constructores (\pydunder{new}, \pydunder{init}) mediante aristas estáticas ($c=1.0$).
+    \item \textbf{Pasada 2 (Resolución de Herencia):} Revisa las tuplas \texttt{bases} de cada clase declarada. Mediante \texttt{ImportResolver}, ubica a los ancestros tanto en importaciones directas como relativas, creando aristas de clase $\text{INHERITANCE}$ que facilitan rastrear métodos heredados por polimorfismo.
+    \item \textbf{Pasada 3 (Sitios de Llamada y Enrutamiento):} La clase \texttt{EdgeExtractor} mantiene una pila con los alcances activos. Cuando encuentra un nodo \texttt{ast.Call}, busca el destino en los símbolos locales o foráneos. Si topa con construcciones opacas (\texttt{eval}, \texttt{getattr}, \texttt{exec}, \texttt{\_\_import\_\_}) o parámetros variables (\texttt{*args}, \texttt{**kwargs}), une el emisor con el nodo especial $\langle\text{DYNAMIC}\rangle$ fijando $c=0.5$. Así se adopta una sobre-aproximación protectora.
+\end{enumerate}
+
+\subsection{Detección de Puntos de Entrada (\textit{Entrypoints})}
+Los puntos de entrada $V_{\text{entry}} \subset V$ marcan el inicio de la ejecución. Son las puertas de acceso. El paquete \texttt{pyreach.reachability.entrypoints} los detecta mediante reglas prácticas:
+\begin{enumerate}
+    \item \textbf{Bloques de arranque:} Expresiones de control tipo \texttt{if \pydunder{name} == '\pydunder{main}':}.
+    \item \textbf{Comandos de terminal:} Funciones registradas en \texttt{[project.scripts]} o envueltas en utilidades de consola.
+    \item \textbf{Rutas en servicios web:} Rutas expuestas en FastAPI (\texttt{@app.get}, \texttt{@app.post}), Flask (\texttt{@app.route}) o controladores de Django.
+\end{enumerate}
+El usuario también puede fijar sus propios orígenes usando el parámetro \clioption{entry-point} o configurándolos en el archivo \texttt{.pyreach.yml}.
+
+\subsection{Algoritmo de Búsqueda Acotada (Bounded BFS)}
+En paquetes como Pandas o Scikit-learn, las conexiones entre funciones son densas. Muy tupidas. Una exploración ciega dispararía el espacio de estados a $O(b^d)$ al instante \cite{nielson1999principles}. Para no romper los tiempos del pipeline, \textit{PyReach} aplica una búsqueda en anchura acotada con límite en $k=5$, cortando ramas circulares para evitar bucles (Algoritmo 2).
+
+\begin{algorithm}[t]
+\caption{Búsqueda Acotada de Alcanzabilidad (\textit{Bounded BFS})}
+\label{alg:bounded_bfs}
+\begin{algorithmic}[1]
+\REQUIRE Grafo $G=(V, E)$, Entrypoint $u \in V_{\text{entry}}$, Objetivo $t \in V$, Cota $k=5$.
+\ENSURE Veredicto $\in \{\text{REACHABLE}, \dots\}$, testigo $P$, banderas $(\mathit{dyn\_edge}, \mathit{cut\_depth})$.
+\IF{$u \notin V$}
+    \RETURN $(\text{NOT\_REACHABLE}, \emptyset, \mathbf{false}, \mathbf{false})$
+\ENDIF
+\IF{$u = t$}
+    \RETURN $(\text{REACHABLE}, [u], \mathbf{false}, \mathbf{false})$
+\ENDIF
+\STATE $Q \leftarrow \text{Cola}([ (u, [u], 0) ])$
+\STATE $\mathit{visitados} \leftarrow \{u\}$
+\STATE $\mathit{dyn\_edge} \leftarrow \mathbf{false}$, $\mathit{cut\_depth} \leftarrow \mathbf{false}$
+\WHILE{$Q \neq \emptyset$}
+    \STATE $(v, \mathit{camino}, d) \leftarrow Q.\text{popleft}()$
+    \IF{$d \ge k$}
+        \IF{$G.\text{out\_degree}(v) > 0$}
+            \STATE $\mathit{cut\_depth} \leftarrow \mathbf{true}$
+        \ENDIF
+        \STATE \textbf{continue}
+    \ENDIF
+    \FORALL{$w \in G.\text{successors}(v)$}
+        \STATE $\mathit{edge\_type} \leftarrow G.\text{edges}[v, w]['\text{type}']$
+        \IF{$\mathit{edge\_type} = \text{DYNAMIC} \lor w = \langle\text{DYNAMIC}\rangle$}
+            \STATE $\mathit{dyn\_edge} \leftarrow \mathbf{true}$
+        \ENDIF
+        \IF{$w = t$}
+            \RETURN $(\text{REACHABLE}, \mathit{camino} + [w], \mathit{dyn\_edge}, \mathit{cut\_depth})$
+        \ENDIF
+        \IF{$w \notin \mathit{visitados}$}
+            \STATE $\mathit{visitados} \leftarrow \mathit{visitados} \cup \{w\}$
+            \STATE $Q.\text{append}((w, \mathit{camino} + [w], d+1))$
+        \ENDIF
+    \ENDFOR
+\ENDWHILE
+\IF{$\mathit{dyn\_edge} \lor \mathit{cut\_depth}$}
+    \STATE \textbf{return} $(\text{POTENTIALLY\_REACHABLE},$
+    \STATE \hspace{3.2em} $\emptyset, \mathit{dyn\_edge}, \mathit{cut\_depth})$
+\ELSE
+    \RETURN $(\text{NOT\_REACHABLE}, \emptyset, \mathbf{false}, \mathbf{false})$
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+En la línea 10 del Algoritmo 2, el corte se comprueba con $d \ge k$ antes de abrir los sucesores del nodo $v$. Ese filtro simple evita encolar elementos de nivel $d=k+1$ ($d=6$ cuando $k=5$). El radio de exploración queda contenido bajo control. Todo marcha en orden.
+
+\subsection{Modelo de Rutas y Poda Visual}
+La Fig. \ref{fig:tikz_reachability} ilustra el descarte de rutas en el grafo. El salto a la rutina normal en la dependencia A es accesible pero inocuo. No reviste peligro. En cambio, invocar el símbolo $t$ en la librería indirecta B acarrea un riesgo crítico que exige atención inmediata. Por último, la función vulnerable en el paquete transitivo C se poda sin dudar: no existe arco alguno que la conecte con la aplicación. Esa alerta cae por su propio peso. No requiere revisión manual.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{0.95\columnwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=1.0cm and 1.1cm,
+    box/.style={rectangle, draw=blue!60, fill=blue!5, thick, rounded corners, minimum height=0.68cm, minimum width=2.1cm, align=center, font=\scriptsize},
+    entry/.style={rectangle, draw=green!60!black, fill=green!10, very thick, rounded corners, minimum height=0.68cm, minimum width=2.3cm, align=center, font=\scriptsize\bfseries},
+    vuln_reach/.style={rectangle, draw=red!80!black, fill=red!15, very thick, rounded corners, minimum height=0.68cm, minimum width=2.3cm, align=center, font=\scriptsize\bfseries},
+    vuln_unreach/.style={rectangle, draw=gray!60, fill=gray!10, dashed, thick, rounded corners, minimum height=0.68cm, minimum width=2.3cm, align=center, font=\scriptsize},
+    arrow_active/.style={-{Latex[scale=1.0]}, thick, color=blue!80!black},
+    arrow_dead/.style={-{Latex[scale=1.0]}, dashed, thick, color=gray!60}
+]
+
+% Nodos Host App
+\node[entry] (ep) at (0, 3.2) {Entrypoint: \texttt{main()}};
+\node[box] (host_call) at (0, 2.1) {\texttt{app.process\_data()}};
+
+% Nodos Lib Directa A
+\node[box] (libA_foo) at (-1.7, 0.9) {\texttt{libA.client()}};
+\node[box] (libA_bar) at (-1.7, -0.2) {\texttt{libA.execute()}};
+
+% Nodos Lib Transitiva B
+\node[vuln_reach] (vuln1) at (-1.7, -1.3) {Target: \texttt{libB.eval()}\\ \textbf{[REACHABLE]}};
+
+% Nodos Lib Transitiva C
+\node[box, dashed] (dead_branch) at (1.7, 0.9) {\texttt{libC.unused()}};
+\node[vuln_unreach] (vuln2) at (1.7, -0.2) {Target: \texttt{libC.leak()}\\ \textbf{[NOT\_REACHABLE]}};
+
+% Aristas
+\draw[arrow_active] (ep) -- (host_call);
+\draw[arrow_active] (host_call) -- (libA_foo);
+\draw[arrow_active] (libA_foo) -- (libA_bar);
+\draw[arrow_active] (libA_bar) -- (vuln1);
+
+\draw[arrow_dead] (dead_branch) -- (vuln2);
+
+% Subgrafos delimitadores
+\begin{scope}[on background layer]
+    \node[draw=green!50!black, fill=green!5, fit=(ep)(host_call), inner sep=4pt] (sub1) {};
+    \node[anchor=south west, font=\tiny\bfseries, color=green!60!black] at (sub1.north west) {Aplicación Huésped};
+
+    \node[draw=orange!60, fill=orange!5, fit=(libA_foo)(libA_bar), inner sep=4pt] (sub2) {};
+    \node[anchor=south west, font=\tiny\bfseries, color=orange!70!black] at (sub2.north west) {Dependencia Directa};
+
+    \node[draw=red!60, fill=red!5, fit=(vuln1)(vuln2)(dead_branch), inner sep=5pt] (sub3) {};
+    \node[anchor=south east, font=\tiny\bfseries, color=red!70!black] at (sub3.north east) {Dependencias Transitivas};
+\end{scope}
+
+\end{tikzpicture}
+}
+\caption{Modelo de alcanzabilidad en grafo de llamadas interprocedimental: contraste entre ruta activa ejecutable y código inerte podado.}
+\label{fig:tikz_reachability}
+\end{figure}
+
+\subsection{Clasificación Tri-Estado y Principio de Conservación}
+Siguiendo el principio de conservación (\textit{soundness}) de Nielson et al. \cite{nielson1999principles}, el motor rehúye los veredictos binarios a secas. Agrega un tercer estado para manejar la duda sin generar falsas seguridades:
+\begin{itemize}
+    \item \textbf{\texttt{REACHABLE}:} Hay al menos una trayectoria clara $\langle u, \dots, t \rangle$ en el grafo con longitud $d \le k$. Nivel SARIF: \texttt{error}.
+    \item \textbf{\texttt{NOT\_REACHABLE}:} La búsqueda concluyó sin hallar el símbolo, sin indicios de invocaciones dinámicas ni topes de cota. Nivel SARIF: \texttt{note}.
+    \item \textbf{\texttt{POTENTIALLY\_REACHABLE}:} Aunque no se trazó una ruta directa hasta el objetivo, el rastreo cruzó llamadas dudosas (\texttt{getattr}, \texttt{eval}) o frenó por llegar al límite $k=5$. Nivel SARIF: \texttt{warning}.
+\end{itemize}
+
+\subsection{Serialización SARIF v2.1.0 y Compuerta de Calidad}
+Los resultados se emiten bajo el estándar OASIS SARIF v2.1.0 \cite{oasis2019sarif}. Cada aviso adjunta un bloque \texttt{codeFlows} con los puntos exactos de invocación que ligan el origen con la rutina vulnerable. Para coordinar el flujo en CI/CD, los códigos de salida siguen el esquema de la Tabla \ref{tab:exit_codes}.
+
+\begin{table}[!htbp]
+\centering
+\caption{Matriz de Códigos de Salida para Compuertas de Calidad CI/CD}
+\label{tab:exit_codes}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{>{\centering\arraybackslash}p{1.0cm}>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{2.6cm}}
+\toprule
+\textbf{Código} & \textbf{Condición Operacional} & \textbf{Acción en CI/CD} \\
+\midrule
+\texttt{0} & Sin hallazgos o todos clasificados como \texttt{NOT\_REACHABLE}. & Permite el despliegue (\textit{Pass}). \\
+\texttt{1} & Al menos un hallazgo \texttt{REACHABLE} (o \texttt{POTENTIALLY\_REACHABLE} con la bandera \clioption{include-potentially}). & Bloquea el pase a producción (\textit{Quality Gate Fail}). \\
+\texttt{2} & Error de configuración, sintaxis o base de datos OSV faltante. & Aborta el pipeline por fallo de entorno. \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\section{Evaluación Experimental y Resultados}
+
+\subsection{Entorno Experimental y Banco de Pruebas Extendido}
+Los experimentos con maquetas de juguete suelen engañar. Para evitar ese sesgo, nos guiamos por las recomendaciones de Wohlin et al. \cite{wohlin2012experimentation} y Myers et al. \cite{myers2011art}. Reunimos un banco diverso de 8 microservicios y proyectos en Python (Tabla \ref{tab:banco_pruebas}). Son piezas reales.
+
+El conjunto incluye sistemas de analítica predictiva, procesadores de lenguaje natural, pasarelas de autenticación, generadores de reportes y servicios asíncronos en producción dentro de Lidercom Perú S.A.C., además de librerías abiertas de uso común. Las pruebas corrieron en equipos Intel Core i7 y AMD Ryzen sobre CPython 3.10 y 3.14, empleando NetworkX 3.6.1 y SQLite 3.45 en discos NVMe SSD.
+
+\begin{table*}[!t]
+\centering
+\caption{Caracterización del Banco de Pruebas Experimental de Microservicios y Proyectos Python}
+\label{tab:banco_pruebas}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccccc}
+\toprule
+\textbf{Identificador} & \textbf{Dominio / Stack Tecnológico} & \textbf{Módulos} & \textbf{LoC} & \textbf{Nodos $|V|$} & \textbf{Aristas $|E|$} & \textbf{Dep. Dir.} & \textbf{Dep. Trans.} \\
+\midrule
+\texttt{MS-Analytics} & Analítica predictiva (FastAPI, Pandas, Scikit-learn) & 31 & 4,820 & 421 & 808 & 18 & 42 \\
+\texttt{MS-NLP-Extract} & Extracción NLP de texto educativo (Spacy, Requests) & 26 & 3,940 & 385 & 712 & 14 & 38 \\
+\texttt{MS-Auth-Gate} & Pasarela OAuth2/JWT (FastAPI, PyJWT, Cryptography) & 18 & 2,610 & 240 & 450 & 9 & 21 \\
+\texttt{MS-Report-Svc} & Generación PDF/Excel (Flask, WeasyPrint, OpenPyXL) & 22 & 3,180 & 310 & 590 & 12 & 29 \\
+\texttt{MS-Data-Sync} & Sincronización ETL asíncrona (Alembic, Psycopg2, Redis) & 15 & 2,050 & 195 & 360 & 8 & 16 \\
+\texttt{MS-Notif-Hub} & Despacho de mensajería (FastAPI, Aiohttp, Boto3) & 20 & 2,740 & 275 & 510 & 11 & 25 \\
+\texttt{OS-DocParser} & Utilidad de parseo documental (Pydantic, PyYAML) & 14 & 1,890 & 170 & 315 & 6 & 12 \\
+\texttt{OS-RateLimit} & Middleware de limitación de tasa (Redis, Urllib3) & 12 & 1,420 & 145 & 275 & 5 & 11 \\
+\midrule
+\textbf{Total / Consolidado} & \textbf{8 servicios evaluados} & \textbf{158} & \textbf{22,650} & \textbf{2,141} & \textbf{4,020} & \textbf{83} & \textbf{194} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\subsection{Evaluación Multicriterio del Motor de Persistencia Local (SQLite)}
+Elegir el motor de almacenamiento offline exigió prudencia. De entrada descartamos PostgreSQL y soluciones de grafos como Neo4j: abrir puertos de red, levantar demonios y gastar más de 250~MB de memoria choca con la idea de un runner ágil y seguro. No tenía sentido.
+
+Comparamos entonces las tres opciones locales más viables: SQLite 3, DuckDB y TinyDB (Fig. \ref{fig:evaluacion_bd}). La ponderación contempló cuatro propiedades con sus respectivos pesos $w_i$:
+\begin{enumerate}
+    \item $C_1$: \textit{Búsqueda indexada por clave} ($w_1 = 0.30$). Para filtrar por paquete y versión ($\sigma_{\text{package}=p \land \text{version}=v}$), SQLite logró 5.0 (0.18~ms con su índice B-Tree), DuckDB 4.0 (diseñada para analítica en columnas) y TinyDB 2.0 (recorrido lineal de JSON).
+    \item $C_2$: \textit{Portabilidad y peso en disco} ($w_2 = 0.25$). SQLite alcanzó 5.0 por venir integrado en CPython (0~MB de carga extra), TinyDB 5.0 por ser código Python puro y DuckDB 3.0 al sumar más de 40~MB en binarios.
+    \item $C_3$: \textit{Aislamiento sin conexión y soberanía} ($w_3 = 0.25$). Tanto SQLite como DuckDB llegaron a 5.0; TinyDB quedó en 4.0 por riesgo de bloqueo y daño en archivos.
+    \item $C_4$: \textit{Garantías ACID e índices} ($w_4 = 0.20$). SQLite y DuckDB sacaron 4.0 gracias a su registro WAL maduro; TinyDB quedó en 2.0 por carecer de soporte transaccional robusto.
+\end{enumerate}
+
+La calificación final se calculó con la suma $\text{Score} = \sum_{i=1}^4 w_i \cdot C_i$:
+\begin{align*}
+\text{Score}_{\text{SQLite}} &= 1.50 + 1.25 + 1.25 + 0.80 = \mathbf{4.80} / 5.00 \\
+\text{Score}_{\text{DuckDB}} &= 1.20 + 0.75 + 1.25 + 0.80 = \mathbf{3.95} / 5.00 \\
+\text{Score}_{\text{TinyDB}} &= 0.60 + 1.25 + 1.00 + 0.40 = \mathbf{3.30} / 5.00
+\end{align*}
+Estos números respaldan la elección de SQLite 3 con sus 4.80 puntos sobre 5.00, tal como muestra la Fig. \ref{fig:evaluacion_bd}. Ganó con margen.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    bar/.style={rectangle, draw=none, rounded corners=1.5pt, minimum height=0.38cm, anchor=west},
+    val/.style={font=\tiny\bfseries, anchor=west},
+    cat/.style={font=\tiny, anchor=east}
+]
+
+% Eje y escala (0 a 5)
+\draw[gray!40, thick] (0, 0) -- (5.0, 0);
+\foreach \x in {1, 2, 3, 4, 5} {
+    \draw[gray!40] (\x, 0) -- (\x, -0.08) node[below, font=\tiny] {\x.0};
+    \draw[gray!20, dotted] (\x, 0) -- (\x, 2.8);
+}
+
+% SQLite 3 (Lila / 4.80)
+\node[cat] at (-0.1, 2.3) {\textbf{SQLite 3}};
+\node[bar, fill=blue!60!purple!70, minimum width=4.80cm] at (0, 2.3) {};
+\node[val, color=blue!70!purple!90] at (4.85, 2.3) {4.80 / 5.0 (Seleccionado)};
+
+% DuckDB (Gris / 3.95)
+\node[cat] at (-0.1, 1.4) {\textbf{DuckDB}};
+\node[bar, fill=gray!60, minimum width=3.95cm] at (0, 1.4) {};
+\node[val, color=gray!80!black] at (4.00, 1.4) {3.95 / 5.0};
+
+% TinyDB (Naranja / 3.30)
+\node[cat] at (-0.1, 0.5) {\textbf{TinyDB}};
+\node[bar, fill=orange!70, minimum width=3.30cm] at (0, 0.5) {};
+\node[val, color=orange!80!black] at (3.35, 0.5) {3.30 / 5.0};
+
+\end{tikzpicture}
+}
+\caption{Evaluación multicriterio de motores de almacenamiento local para OSV: puntaje ponderado considerando latencia por clave ($<0.18$ ms), portabilidad nativa y soporte ACID.}
+\label{fig:evaluacion_bd}
+\end{figure}
+
+\subsection{Tasa de Reducción de Alertas Espurias y Evaluación contra Ground Truth}
+Al pasar escáneres clásicos como \textit{pip-audit} y \textit{Safety} por los 8 proyectos seleccionados, saltaron en conjunto \textbf{77 alertas de CVE}. Un volumen considerable.
+
+Hacía falta contrastar esa cifra contra un oráculo confiable (\textit{ground truth}). Dos ingenieros sénior examinaron a fondo cada caso. Hicieron una auditoría minuciosa. Revisaron el código fuente. Siguieron las rutas de importación. Corrieron pruebas dinámicas. Dicho peritaje arrojó lo siguiente:
+\begin{itemize}
+    \item Solo \textbf{11 vulnerabilidades (14.3\%)} estaban activas y resultaban accesibles al ejecutar el programa (\textit{Ground Truth Positives}).
+    \item Las otras \textbf{66 fallas (85.7\%)} correspondían a código inerte, desconectado de los puntos de entrada (\textit{Ground Truth Negatives}).
+\end{itemize}
+
+Cuando pasamos \textit{PyReach} sobre el mismo lote, obtuvimos este balance:
+\begin{itemize}
+    \item \textbf{\texttt{REACHABLE}:} 11 alertas confirmadas.
+    \item \textbf{\texttt{POTENTIALLY\_REACHABLE}:} 3 avisos ambiguos por llamadas dinámicas en submódulos secundarios.
+    \item \textbf{\texttt{NOT\_REACHABLE}:} 63 casos descartados por falta de rutas de ejecución.
+\end{itemize}
+
+\begin{table}[!htbp]
+\centering
+\caption{Matriz de Confusión y Métricas de Rendimiento frente al Ground Truth Auditado}
+\label{tab:ground_truth_metrics}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica de Clasificación} & \textbf{SCA Manifiesto} & \textbf{PyReach (Propuesto)} \\
+\midrule
+Verdaderos Positivos (TP) & 11 & \textbf{11} \\
+Falsos Positivos (FP) & 66 & \textbf{3} (conservadores) \\
+Verdaderos Negativos (TN) & 0 & \textbf{63} \\
+Falsos Negativos (FN) & \textbf{0} & \textbf{0} (\textit{Strict Soundness}) \\
+\midrule
+\textbf{Precisión (\textit{Precision})} & 14.3\% & \textbf{78.6\%} \\
+\textbf{Exhaustividad (\textit{Recall})} & 100.0\% & \textbf{100.0\%} \\
+\textbf{Especificidad (\textit{Specificity})} & 0.0\% & \textbf{95.5\%} \\
+\textbf{Valor F1 (\textit{F1-Score})} & 25.0\% & \textbf{88.0\%} \\
+\textbf{Tasa de Poda de Alertas Espurias} & 0.0\% & \textbf{81.8\%} (63 de 77) \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+La Tabla \ref{tab:ground_truth_metrics} detalla el rendimiento del clasificador bajo el criterio estricto de CI/CD (donde \texttt{POTENTIALLY\_REACHABLE} frena el paso como precaución). Los datos arrojan conclusiones directas:
+\begin{enumerate}
+    \item \textbf{Cero falsos negativos críticos ($FN = 0$):} El analizador atrapó las 11 vulnerabilidades reales sin dejar escapar una sola. Ni una. Esto valida en la práctica la solidez (\textit{soundness}) formulada por Nielson et al. \cite{nielson1999principles}.
+    \item \textbf{Subida notable en precisión:} Pasamos de un modesto 14.3\% con herramientas tradicionales a un 78.6\% (mejora de $5.5\times$). En paralelo, el índice F1 trepó de 25.0\% a 88.0\%.
+    \item \textbf{Corte drástico del ruido:} Se descartaron \textbf{63 de las 77 alertas}, alcanzando una tasa de poda general del \textbf{81.8\%}. En los servicios evaluados por separado, la poda se movió entre un \textbf{80.0\% y un 87.5\%}. Dicho de otro modo: cuatro de cada cinco avisos de los escáneres habituales eran ruido puro. Basura operacional.
+\end{enumerate}
+
+\subsection{Rendimiento Temporal y Consumo de Recursos}
+Lidercom fijaba un tope de 45 segundos por microservicio. Ese era el límite admitido. Para medir la velocidad real, promediamos 10 corridas sucesivas tanto en frío (con el intérprete recién cargado) como en caliente (aprovechando módulos ya en caché). La Tabla \ref{tab:benchmarks} compila los tiempos y el techo de memoria RAM.
+
+\begin{table}[!htbp]
+\centering
+\caption{Rendimiento Computacional y Consumo de Recursos de \textit{PyReach}}
+\label{tab:benchmarks}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Servicio Evaluado} & \textbf{Arranque} & \textbf{Tiempo Net.} & \textbf{Memoria} & \textbf{Veredicto Dominante} \\
+\midrule
+\multirow{2}{*}{\texttt{MS-Analytics}} & Frío & 1.176 s & 7.24 MB & \texttt{POTENTIALLY\_REACHABLE} \\
+                                        & Caliente & 0.844 s & 7.19 MB & \texttt{POTENTIALLY\_REACHABLE} \\
+\midrule
+\multirow{2}{*}{\texttt{MS-NLP-Extract}} & Frío & 1.042 s & 6.85 MB & \texttt{REACHABLE} \\
+                                          & Caliente & 0.761 s & 6.78 MB & \texttt{REACHABLE} \\
+\midrule
+\multirow{2}{*}{\texttt{MS-Auth-Gate}} & Frío & 0.685 s & 4.30 MB & \texttt{NOT\_REACHABLE} \\
+                                        & Caliente & 0.490 s & 4.25 MB & \texttt{NOT\_REACHABLE} \\
+\midrule
+\multirow{2}{*}{\texttt{MS-Report-Svc}} & Frío & 0.892 s & 5.60 MB & \texttt{POTENTIALLY\_REACHABLE} \\
+                                         & Caliente & 0.635 s & 5.52 MB & \texttt{POTENTIALLY\_REACHABLE} \\
+\midrule
+\textbf{CLI E2E Máximo} & Global & \textbf{1.612 s} & \textbf{7.24 MB} & \textbf{SARIF v2.1.0 Emitido} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+En el microservicio más pesado (\texttt{MS-Analytics}), el reloj marcó un tiempo total de \textbf{1.61~s}. La holgura supera las \textbf{28 veces} frente al techo de 45 segundos. Un margen enorme. La memoria RAM pico apenas llegó a \textbf{7.24~MB}. Es un consumo mínimo. Con esa huella tan contenida, el motor rueda en contenedores y \textit{GitLab Runners} con recursos mínimos sin peligro de cancelaciones por \textit{Out-Of-Memory} (OOM).
+
+\subsection{Análisis de Sensibilidad Empírico de la Cota de Profundidad $k$}
+Fijar el tope $k=5$ en el Algoritmo \ref{alg:bounded_bfs} no fue un capricho. Tenía sustento numérico. Para evaluar su impacto, medimos qué ocurría al variar la profundidad máxima entre $k \in \{1, 2, 3, 4, 5, 6, 7, 8, \infty\}$ sobre los 8 microservicios (Tabla \ref{tab:sensibilidad_k}).
+
+\begin{table}[!htbp]
+\centering
+\caption{Análisis de Sensibilidad de la Cota de Profundidad $k$ frente a Exhaustividad y Rendimiento}
+\label{tab:sensibilidad_k}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Cota $k$} & \textbf{Exhaustividad (\%)} & \textbf{TP Detectados} & \textbf{Tiempo Medio (s)} & \textbf{Nodos Explorados} \\
+\midrule
+$k=1$ & 36.4\% & 4 / 11 & 0.28 s & 32 \\
+$k=2$ & 63.6\% & 7 / 11 & 0.45 s & 85 \\
+$k=3$ & 81.8\% & 9 / 11 & 0.72 s & 194 \\
+$k=4$ & 90.9\% & 10 / 11 & 1.05 s & 362 \\
+$\mathbf{k=5}$ & \textbf{100.0\%} & \textbf{11 / 11} & \textbf{1.18 s} & \textbf{580} \\
+$k=6$ & 100.0\% & 11 / 11 & 1.63 s & 924 \\
+$k=7$ & 100.0\% & 11 / 11 & 3.42 s & 1,640 \\
+$k=8$ & 100.0\% & 11 / 11 & 8.95 s & 3,210 \\
+$k=\infty$ & 100.0\% & 11 / 11 & 14.80 s & 5,840 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Los números muestran tres conclusiones claras:
+\begin{enumerate}
+    \item \textit{Convergencia en $k=5$:} Con cotas menores ($k \le 4$), el análisis pierde vulnerabilidades reales. Se cortan antes de tiempo llamadas que cruzan librerías intermedias hasta llegar a funciones profundas en Pandas o Scikit-learn. Justo al poner $k=5$, la exhaustividad trepa al \textbf{100.0\%} con 11 aciertos sobre 11 casos reales.
+    \item \textit{Beneficio nulo al subir a $k \ge 6$:} Pasar el límite a $k=6$, $k=7$ u 8 no destapó ni un solo fallo nuevo en las pruebas. En microservicios bien armados, las cadenas rara vez pasan de cuatro saltos. Son rutas cortas.
+    \item \textit{Freno a la explosión combinatoria:} Con $k=5$, la búsqueda toma 1.18~s revisando 580 nodos. Si se abre más la cota, el volumen de aristas en librerías numéricas dispara los tiempos: 8.95~s para $k=8$ y casi 15~s si se deja libre ($k=\infty$). La profundidad 5 equilibra cobertura total y rapidez operativa. Es el punto justo.
+\end{enumerate}
+
+\subsection{Auditoría de Tráfico y Soberanía de Datos}
+Revisamos el cumplimiento del Control A.8.12 de ISO/IEC 27001:2022 mediante auditorías estáticas y dinámicas sobre el paquete final de \textit{PyReach} (\texttt{.whl}):
+\begin{itemize}
+    \item Rastreo de llamadas a sockets (\texttt{socket}, \texttt{http.client}, \texttt{requests}, \texttt{urllib.request}): el flujo de escaneo no invoca librerías de conexión. El validador del esquema SARIF carga un archivo empaquetado en disco con \texttt{importlib.resources}.
+    \item Monitoreo de tráfico en pruebas: confirmamos el envío de \textbf{cero bytes (0 KB)} hacia afuera del host. Cero paquetes.
+\end{itemize}
+
+\section{Discusión y Amenazas a la Validez}
+
+\subsection{Impacto Operacional en Lidercom Perú S.A.C.}
+Incorporar \textit{PyReach} alivió de lleno la rutina del equipo. Hubo mejoras claras. Al podar las falsas alarmas, el tiempo dedicado a revisar alertas a mano cayó de \textbf{10 horas semanales a menos de 1.5 horas semanales}. Ya no hay fatiga frente a avisos inútiles. El equipo respira. Tampoco hicieron falta parches apresurados en librerías secundarias. Los fallos por rotura de contratos de API (\textit{breaking changes}) bajaron a cero en producción.
+
+\subsection{Compromisos Técnicos (\textit{Trade-offs})}
+\begin{enumerate}
+    \item \textit{Sobre-aproximación protectora frente a la precisión:} Al topar con metaprogramación intrincada (\texttt{getattr(obj, var)()}), marcar el nodo como \texttt{POTENTIALLY\_REACHABLE} deja vivas unas pocas dudas (3 de 66 casos negativos). Es un costo asumible frente al peligro de ignorar un agujero de seguridad crítico.
+    \item \textit{Cota de búsqueda $k=5$ frente al costo en tiempo:} En teoría, una invocación ubicada a 6 o más saltos quedaría fuera del alcance del algoritmo. Eso sí, los ensayos revelaron que una cota de 5 cubre el 100\% de las rutas reales sin disparar el uso de CPU.
+\end{enumerate}
+
+\subsection{Amenazas a la Validez}
+\begin{itemize}
+    \item \textbf{Validez Interna:} El grafo depende de qué tan bien traduce el AST las partes complejas de Python. Si entran módulos en C vía Cython o la C-API, el motor los aparta de inmediato y los califica bajo sospecha para no pecar de optimista.
+    \item \textbf{Validez Externa:} Estudiamos 8 proyectos orientados a analítica, NLP y servicios asíncronos. Para extrapolar estos números a cualquier ámbito, toca probar el sistema en monolitos antiguos con millones de líneas de código fuente.
+    \item \textbf{Validez de Constructo:} Saber que una función es alcanzable no asegura que un atacante logre explotarla: eso depende de qué parámetros controle desde afuera. Pero la inalcanzabilidad sí da certeza matemática de lo opuesto: sin ruta de ejecución, el ataque no prospera.
+\end{itemize}
+
+\section{Conclusiones y Trabajo Futuro}
+Presentamos \textbf{\textit{PyReach}}, un analizador estático de código abierto que corre de forma íntegra en local para depurar las alertas espurias en dependencias de Python. Al levantar Grafos de Llamadas con NetworkX mediante tres pasadas sobre el AST nativo y cruzar esos datos con la base SQLite de OpenSSF OSV, la herramienta rastrea el camino real hasta cada componente con fallas.
+
+Las pruebas sobre 8 microservicios reales frente a un oráculo auditado a mano arrojaron una caída del \textbf{81.8\% en alertas irrelevantes} (con oscilaciones entre 80.0\% y 87.5\%, quitando 63 de 77 avisos). La exhaustividad se mantuvo en \textbf{100.0\%} (\textit{cero falsos negativos críticos}), con una precisión del 78.6\%, escaneos por debajo de 1.62 segundos ($28\times$ más veloz que la meta acordada) y aislamiento total de red (0 bytes transferidos), en sintonía con las exigencias de ISO/IEC 27001:2022.
+
+A futuro, planeamos sumar tres mejoras: 1) análisis interprocedimental de flujo manchado (\textit{taint reachability}) para seguir datos inseguros; 2) soporte dinámico con eBPF que corrobore llamadas en plena ejecución; y 3) lectura directa de módulos compilados en Rust o C++.
+
+% --- Bibliografía IEEE Indexada ---
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+\end{document}

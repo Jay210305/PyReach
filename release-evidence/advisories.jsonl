@@ -1,0 +1,1 @@
+{"id": "SYNTH-REACH", "modified": "2026-11-01T00:00:00Z", "summary": "Controlled synthetic fixture, not a real vulnerability", "affected": [{"package": {"ecosystem": "PyPI", "name": "vuln-lib"}, "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "2"}]}], "ecosystem_specific": {"symbols": ["vuln_lib.risky"]}}]}

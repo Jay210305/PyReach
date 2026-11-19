@@ -1,0 +1,33 @@
+{
+  "tool": "PyReach",
+  "version": "0.1.0",
+  "project": "C:\\Users\\jay21\\Documents\\Universidad\\proyecto_fin_de_carrera\\PyReach\\release-evidence\\dynamic_import",
+  "summary": {
+    "total": 1,
+    "reachable": 0,
+    "potentially_reachable": 1,
+    "not_reachable": 0
+  },
+  "results": [
+    {
+      "vulnerability": {
+        "osvId": "SYNTH-REACH",
+        "osv_id": "SYNTH-REACH",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "vuln-lib",
+        "package_name": "vuln-lib",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "POTENTIALLY_REACHABLE",
+      "path": [],
+      "location": {
+        "file": "vuln_lib/__init__.py",
+        "line": 1
+      }
+    }
+  ],
+  "diagnostics": []
+}

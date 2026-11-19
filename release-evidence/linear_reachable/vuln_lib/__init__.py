@@ -1,0 +1,2 @@
+def risky():
+    return "vulnerable"

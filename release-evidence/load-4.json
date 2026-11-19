@@ -1,0 +1,188 @@
+{
+  "tool": "PyReach",
+  "version": "0.1.0",
+  "project": "C:\\Users\\jay21\\Documents\\Universidad\\proyecto_fin_de_carrera\\PyReach\\release-evidence\\load_corpus",
+  "summary": {
+    "total": 10,
+    "reachable": 2,
+    "potentially_reachable": 0,
+    "not_reachable": 8
+  },
+  "results": [
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N0",
+        "osv_id": "LOAD-N0",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-0",
+        "package_name": "sample-0",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N1",
+        "osv_id": "LOAD-N1",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-1",
+        "package_name": "sample-1",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N2",
+        "osv_id": "LOAD-N2",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-2",
+        "package_name": "sample-2",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N3",
+        "osv_id": "LOAD-N3",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-3",
+        "package_name": "sample-3",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N4",
+        "osv_id": "LOAD-N4",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-4",
+        "package_name": "sample-4",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N5",
+        "osv_id": "LOAD-N5",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-5",
+        "package_name": "sample-5",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N6",
+        "osv_id": "LOAD-N6",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-6",
+        "package_name": "sample-6",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-N7",
+        "osv_id": "LOAD-N7",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "sample-7",
+        "package_name": "sample-7",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "NOT_REACHABLE",
+      "path": [],
+      "location": null
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-R1",
+        "osv_id": "LOAD-R1",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "vuln-lib",
+        "package_name": "vuln-lib",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "REACHABLE",
+      "path": [
+        "main.__main__",
+        "main.main",
+        "vuln_lib.risky"
+      ],
+      "location": {
+        "file": "vuln_lib.py",
+        "line": 1
+      }
+    },
+    {
+      "vulnerability": {
+        "osvId": "LOAD-R2",
+        "osv_id": "LOAD-R2",
+        "cveId": null,
+        "cve_id": null,
+        "packageName": "vuln-lib",
+        "package_name": "vuln-lib",
+        "installedVersion": "1.0.0",
+        "installed_version": "1.0.0",
+        "severity": null
+      },
+      "status": "REACHABLE",
+      "path": [
+        "main.__main__",
+        "main.main",
+        "vuln_lib.other"
+      ],
+      "location": {
+        "file": "vuln_lib.py",
+        "line": 3
+      }
+    }
+  ],
+  "diagnostics": []
+}
